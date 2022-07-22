@@ -6,7 +6,7 @@ classification:
 
   AOI: 
     shapefile:
-      path: C:\\Users\\Anwender\\Desktop\\Masterarbeit\\solar_detection\\data\\aoi.shp
+      path: D:\\Universität\\Master_GeoInfo\\Masterarbeit\\data\\SolarParks\\aoi\\aoi.shp
     wkt:
       Polygon: POLYGON()
       Point: POINT()
