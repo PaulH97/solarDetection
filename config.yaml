@@ -1,0 +1,24 @@
+version: 0.1
+
+classification:
+  # type: "landuse"
+  type: tree
+
+  AOI: 
+    shapefile:
+      path: C:\\Users\\Anwender\\Desktop\\Masterarbeit\\solar_detection\\data\\aoi.shp
+    wkt:
+      Polygon: POLYGON()
+      Point: POINT()
+  
+  data_source:
+    satellite:
+      name: Sentinel2 
+      processing_level: LEVEL3
+      product_type: L3-WASP
+      start_date: "2021-01-01T00:00:00Z"
+      end_date: "2021-12-01T23:59:59Z"
+      cloud_cover: 5
+  
+  output: 
+    path: ""
