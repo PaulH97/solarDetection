@@ -24,7 +24,7 @@ img_dataset = []
 for band in sen2_sen1_mask:
 
     raster = rasterio.open(band)
-    array = raster.read().reshape(10980,10980,1)
+    array = raster.read().reshape(raster.width,raster.height,1) # (10980,10980,1)
 
     # resize array for patch size? 
     patches = patchify(array, (patch_size, patch_size, 1), step=patch_size)
@@ -58,7 +58,7 @@ for idx in range(len(red)):
     img_dataset_stack.append(stack)
     label_dataset.append(labels[idx])
 
-#Another Sanity check, view few mages
+# visualize 
 import random
 import numpy as np
 from matplotlib import pyplot as plt
