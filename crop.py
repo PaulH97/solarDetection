@@ -79,16 +79,23 @@ plt.subplot(122)
 plt.imshow(label_dataset[image_number])
 plt.show()
 
-import pdb
-pdb.set_trace()
-
 from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(image_dataset, labels_cat, test_size = 0.20, random_state = 42)
+X_train, X_test, y_train, y_test = train_test_split(img_dataset_stack, label_dataset, test_size = 0.20, random_state = 42)
 
+from unet import binary_unet_model
 
+model = binary_unet_model(256,256,5)
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
+results = model.fit(X_train, y_train,
+                    batch_size=16,
+                    epochs=100,
+                    validation_data=(X_test,y_test),
+                    shuffle=False)
 
-
+print("Evaluate on test data")
+results = model.evaluate(X_test, y_test, batch_size=128)
+print("test loss, test acc:", results)
 
 
 
