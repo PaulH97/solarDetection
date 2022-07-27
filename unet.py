@@ -4,6 +4,7 @@ from tensorflow.keras.models import Model
 import tensorflow as tf
 
 
+
 def transferL_unet_model(img_width, img_height, img_bands):
 
     #Import vgg model by not defining an input shape. 
@@ -190,9 +191,9 @@ def binary_unet(img_w, img_h, img_c):
     
     outputs = tf.keras.layers.Conv2D(1, (1, 1), activation='sigmoid')(c9)
     
-    model = tf.keras.Model(inputs=[inputs], outputs=[outputs])
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-    model.summary()
+    model = Model(inputs=[inputs], outputs=[outputs])
 
-binary_unet(128,128,5)
+    return model
+
+
 

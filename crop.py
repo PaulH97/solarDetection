@@ -5,6 +5,7 @@ from glob import glob
 from patchify import patchify
 import tifffile as tiff
 import tensorflow as tf
+from sklearn.preprocessing import MinMaxScaler
 
 # load sentinel 1 & 2 band paths as list
 sen1_path_resize = glob(r"D:\Universität\Master_GeoInfo\Masterarbeit\data\Sentinel1\S1_CARD-BS-MC_202110_33UVT_*_resize.tif")
@@ -19,7 +20,7 @@ sen2_sen1_mask = sen2_path + sen1_path_resize + mask # [red, green, blue, vv, vh
 
 # define patch size 
 patch_size = 128
-
+scaler = MinMaxScaler()
 img_dataset = []
 
 for band in sen2_sen1_mask:
@@ -38,7 +39,7 @@ for band in sen2_sen1_mask:
            
             single_patch_img = patches[i,j,:,:]
             # need to normalize values between 0-1
-            # single_patch_img = (single_patch_img.astype('float32')) / 255. 
+            single_patch_img = scaler.fit_transform(single_patch_img.reshape(-1, single_patch_img.shape[-1])).reshape(single_patch_img.shape)
             single_patch_img = single_patch_img[0] #Drop the extra unecessary dimension that patchify adds.                               
             img_dataset.append(single_patch_img)
 
@@ -93,8 +94,7 @@ label_dataset = np.array(label_dataset)
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(img_dataset_stack, label_dataset, test_size = 0.20, random_state = 42)
 
-from unet import binary_unet_model, multi_unet_model
-
+from unet import binary_unet
 # train_steps = len(train_x)//batch_size
 # valid_steps = len(valid_x)//batch_size
 
@@ -104,11 +104,16 @@ from unet import binary_unet_model, multi_unet_model
 #     EarlyStopping(monitor="val_loss", patience=5, verbose=1)
 # ]
 
-
-model = multi_unet_model(1,128,128,5)
+model = binary_unet(128,128,5)
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+model.summary()
 
-results = model.fit(X_train, y_train, batch_size=8, verbose=1, epochs=5, validation_data=(X_test,y_test), shuffle=False)
+results = model.fit(X_train, y_train, 
+                    batch_size=16, 
+                    verbose=1, 
+                    epochs=5, 
+                    validation_data=(X_test,y_test), 
+                    shuffle=False)
 
 print("Evaluate on test data")
 results = model.evaluate(X_test, y_test, batch_size=128)
