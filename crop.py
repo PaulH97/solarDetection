@@ -4,6 +4,7 @@ import numpy as np
 from glob import glob
 from patchify import patchify
 import tifffile as tiff
+import tensorflow as tf
 
 # load sentinel 1 & 2 band paths as list
 sen1_path_resize = glob(r"D:\Universität\Master_GeoInfo\Masterarbeit\data\Sentinel1\S1_CARD-BS-MC_202110_33UVT_*_resize.tif")
@@ -36,6 +37,7 @@ for band in sen2_sen1_mask:
         for j in range(patchY):
            
             single_patch_img = patches[i,j,:,:]
+            # need to normalize values between 0-1
             # single_patch_img = (single_patch_img.astype('float32')) / 255. 
             single_patch_img = single_patch_img[0] #Drop the extra unecessary dimension that patchify adds.                               
             img_dataset.append(single_patch_img)
@@ -79,23 +81,39 @@ plt.subplot(122)
 plt.imshow(label_dataset[image_number])
 plt.show()
 
+# def expandDim(array):
+#     return np.expand_dims(array, axis=0)
+
+# img_dataset_stack = list(map(expandDim, img_dataset_stack))
+# label_dataset = list(map(expandDim, label_dataset))
+
+img_dataset_stack = np.array(img_dataset_stack)
+label_dataset = np.array(label_dataset)
+
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(img_dataset_stack, label_dataset, test_size = 0.20, random_state = 42)
 
-from unet import binary_unet_model
+from unet import binary_unet_model, multi_unet_model
 
-model = binary_unet_model(256,256,5)
+# train_steps = len(train_x)//batch_size
+# valid_steps = len(valid_x)//batch_size
+
+# callbacks = [
+#     ModelCheckpoint("model.h5", verbose=1, save_best_model=True),
+#     ReduceLROnPlateau(monitor="val_loss", patience=3, factor=0.1, verbose=1, min_lr=1e-6),
+#     EarlyStopping(monitor="val_loss", patience=5, verbose=1)
+# ]
+
+
+model = multi_unet_model(1,128,128,5)
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-results = model.fit(X_train, y_train,
-                    batch_size=16,
-                    epochs=100,
-                    validation_data=(X_test,y_test),
-                    shuffle=False)
+results = model.fit(X_train, y_train, batch_size=8, verbose=1, epochs=5, validation_data=(X_test,y_test), shuffle=False)
 
 print("Evaluate on test data")
 results = model.evaluate(X_test, y_test, batch_size=128)
 print("test loss, test acc:", results)
+
 
 
 
