@@ -7,9 +7,6 @@ classification:
   AOI: 
     shapefile:
       path: C:\\Users\\Anwender\\Desktop\\aoi\\aoi.shp
-    wkt:
-      Polygon: POLYGON()
-      Point: POINT()
   
   data_source:
     satellite:

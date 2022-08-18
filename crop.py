@@ -1,9 +1,8 @@
-import os
+
 import rasterio 
 import numpy as np
 from glob import glob
 from patchify import patchify
-import tifffile as tiff
 import tensorflow as tf
 from sklearn.preprocessing import MinMaxScaler
 
@@ -72,7 +71,6 @@ for idx, label in enumerate(labels):
     if  np.count_nonzero(label == 1):
         idx_list.append(idx)
 
-
 image_number = random.randint(0, len(img_dataset_stack))
 image_number = random.choice(idx_list)
 plt.figure(figsize=(12, 6))
@@ -82,12 +80,6 @@ plt.subplot(122)
 plt.imshow(label_dataset[image_number])
 plt.show()
 
-# def expandDim(array):
-#     return np.expand_dims(array, axis=0)
-
-# img_dataset_stack = list(map(expandDim, img_dataset_stack))
-# label_dataset = list(map(expandDim, label_dataset))
-
 img_dataset_stack = np.array(img_dataset_stack)
 label_dataset = np.array(label_dataset)
 
@@ -95,14 +87,6 @@ from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(img_dataset_stack, label_dataset, test_size = 0.20, random_state = 42)
 
 from unet import binary_unet
-# train_steps = len(train_x)//batch_size
-# valid_steps = len(valid_x)//batch_size
-
-# callbacks = [
-#     ModelCheckpoint("model.h5", verbose=1, save_best_model=True),
-#     ReduceLROnPlateau(monitor="val_loss", patience=3, factor=0.1, verbose=1, min_lr=1e-6),
-#     EarlyStopping(monitor="val_loss", patience=5, verbose=1)
-# ]
 
 model = binary_unet(128,128,5)
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
@@ -110,7 +94,8 @@ model.summary()
 
 results = model.fit(X_train, y_train, 
                     batch_size=16, 
-                    verbose=1, 
+                    verbose=1,
+                    monitor='val_loss', 
                     epochs=5, 
                     validation_data=(X_test,y_test), 
                     shuffle=False)
@@ -120,56 +105,3 @@ results = model.evaluate(X_test, y_test, batch_size=128)
 print("test loss, test acc:", results)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# mask_out = r"D:\Universität\Master_GeoInfo\Masterarbeit\data\SolarParks\raster\33UVT\crops"
-
-# for idx, label in enumerate(labels):
-#     if  np.count_nonzero(label == 1):
-#         print(idx)
-#     tiff.imwrite(os.path.join(mask_out, f'33UVT_label_{idx}.tif'), label)
-
-
-
-
-# raster_muster = rasterio.open(sen2_sen1_mask[0])
-
-# for idx in range(len(red)):
-
-#     final = rasterio.open(os.path.join(out_path, f'33UVT_RGB_VV_VH_{idx}.tif'),'w', driver='Gtiff',
-#                         width=patch_size, height=patch_size,
-#                         count=5,
-#                         crs=raster_muster.crs,
-#                         transform=raster_muster.transform,
-#                         dtype=raster_muster.dtypes[0]
-#                         )
-       
-#     final.write(red[idx][:,:,0],1) # red
-#     final.write(green[idx][:,:,0],2) # green
-#     final.write(blue[idx][:,:,0],3) # blue
-#     final.write(vv[idx][:,:,0],4) # vv
-#     final.write(vh[idx][:,:,0],5) # vh
