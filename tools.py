@@ -59,3 +59,15 @@ output.SetProjection(referenceProj)
 gdal.ReprojectImage(input, output, inputProj, referenceProj, gdalconst.GRA_Bilinear)
 
 del output
+
+# path = r"D:\Universität\Master_GeoInfo\Masterarbeit\data\SolarParks\raster"
+# folders = os.listdir(path)
+# for folder in folders:
+#     files = os.listdir(os.path.join(path, folder))
+#     for f in files:
+#         name = os.path.join(path, folder, f)
+#         print(name)
+#         rename = os.path.join(path, folder, str(folder) + "_" + f)
+#         print(rename)
+#         os.rename(name, rename)
+

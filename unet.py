@@ -3,8 +3,6 @@ import numpy as np
 from tensorflow.keras.models import Model
 import tensorflow as tf
 
-
-
 def transferL_unet_model(img_width, img_height, img_bands):
 
     #Import vgg model by not defining an input shape. 
@@ -63,7 +61,6 @@ def transferL_unet_model(img_width, img_height, img_bands):
                     target_layer.trainable = True  
 
     return vgg_updated
-
 
 from keras.models import Model
 from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D, concatenate, Conv2DTranspose, BatchNormalization, Dropout, Lambda
