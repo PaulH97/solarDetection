@@ -53,7 +53,7 @@ for id in list_id:
             
                 single_patch_img = patches[i,j,:,:]
                 # need to normalize values between 0-1
-                single_patch_img = scaler.fit_transform(sclae multi
+                single_patch_img = scaler.fit_transform(single_patch_img.reshape(-1, single_patch_img.shape[-1])).reshape(single_patch_img.shape)
                 single_patch_img = single_patch_img[0] #Drop the extra unecessary dimension that patchify adds.                               
                 img_dataset.append(single_patch_img)
 

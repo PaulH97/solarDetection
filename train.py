@@ -4,7 +4,11 @@ import os
 import rasterio
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+import warnings
+import rasterio
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
+warnings.filterwarnings("ignore", category=rasterio.errors.NotGeoreferencedWarning)
 
 img_path = r"D:\Universität\Master_GeoInfo\Masterarbeit\data\Crops\All\img"
 mask_path = r"D:\Universität\Master_GeoInfo\Masterarbeit\data\Crops\All\mask"
@@ -37,7 +41,7 @@ for mask in mask_list:
 img_dataset = np.array(img_dataset)
 mask_dataset = np.array(mask_dataset)
 
-X_train, X_test, y_train, y_test = train_test_split(img_dataset, mask_dataset, test_size = 0.20, random_state = 42)
+X_train, X_test, y_train, y_test = train_test_split(img_dataset, mask_dataset, test_size = 0.10, random_state = 42)
 
 import random
 import numpy as np
@@ -51,9 +55,6 @@ plt.subplot(122)
 plt.imshow(y_train[img_nr])
 plt.show()
 
-import pdb
-pdb.set_trace()
-
 model = binary_unet(128,128,5)
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
@@ -61,11 +62,24 @@ results = model.fit(X_train, y_train,
                     batch_size=16, 
                     verbose=1, 
                     epochs=5, 
-                    validation_data=(X_test,y_test), 
                     shuffle=False)
 
 print("Evaluate on test data")
-results = model.evaluate(X_test, y_test, batch_size=128)
+results = model.evaluate(X_test, y_test, batch_size=16)
 print("test loss, test acc:", results)
 
+preds_test = model.predict(X_test, verbose=1) # (len(X_test), 128, 128, 1)
+
+preds_test_t = (preds_test > 0.5).astype(np.uint8) 
+
+for i in range(len(X_test)):
+
+    if np.count_nonzero(preds_test_t[i] == 1):
+
+        plt.figure(figsize=(12,6))
+        plt.subplot(121)
+        plt.imshow(X_test[i][:,:,:3])
+        plt.subplot(122)
+        plt.imshow(preds_test_t[i])
+        plt.show()
 
