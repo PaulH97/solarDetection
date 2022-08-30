@@ -191,6 +191,3 @@ def binary_unet(img_w, img_h, img_c):
     model = Model(inputs=[inputs], outputs=[outputs])
 
     return model
-
-
-

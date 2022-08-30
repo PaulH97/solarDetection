@@ -2,11 +2,12 @@ from sklearn.model_selection import train_test_split
 from unet import binary_unet
 import os
 import rasterio
-import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import warnings
 import rasterio
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import random 
+from matplotlib import pyplot as plt
+from datagen import CustomImageGenerator
 
 warnings.filterwarnings("ignore", category=rasterio.errors.NotGeoreferencedWarning)
 
@@ -19,67 +20,53 @@ mask_list = os.listdir(mask_path)
 img_list.sort()
 mask_list.sort()
 
-img_dataset = []
-mask_dataset = []
+def updatePathIMG(file_name):
+    return os.path.join(img_path, file_name)
+
+def updatePathMask(file_name):
+    return os.path.join(mask_path, file_name)
+
+img_list_update = list(map(updatePathIMG, img_list))
+mask_list_update = list(map(updatePathMask, mask_list))
 
 scaler = MinMaxScaler()
 
-for img in img_list:
-    
-    img_arr = rasterio.open(os.path.join(img_path, img)).read()
-    img_arr = np.moveaxis(img_arr, 0, -1)
-    img_arr = scaler.fit_transform(img_arr.reshape(-1, img_arr.shape[-1])).reshape(img_arr.shape)
-    img_dataset.append(img_arr)
+X_train, X_test, y_train, y_test = train_test_split(img_list_update, mask_list_update, test_size = 0.10, random_state = 42)
 
-for mask in mask_list:
-    
-    mask_arr = rasterio.open(os.path.join(mask_path, mask)).read()
-    mask_arr = np.moveaxis(mask_arr, 0, -1)
-    mask_arr = scaler.fit_transform(mask_arr.reshape(-1, mask_arr.shape[-1])).reshape(mask_arr.shape)
-    mask_dataset.append(mask_arr)
+train_datagen = CustomImageGenerator(X_train, y_train,(128,128))
+test_datagen = CustomImageGenerator(X_test, y_test, (128,128))
 
-img_dataset = np.array(img_dataset)
-mask_dataset = np.array(mask_dataset)
+batch_nr = random.randint(0, len(train_datagen))
 
-X_train, X_test, y_train, y_test = train_test_split(img_dataset, mask_dataset, test_size = 0.10, random_state = 42)
+X,y = train_datagen[batch_nr]
 
-import random
-import numpy as np
-from matplotlib import pyplot as plt
+for i in range(X.shape[0]):
 
-img_nr = random.randint(0, len(X_train))
-plt.figure(figsize=(12,6))
-plt.subplot(121)
-plt.imshow(X_train[img_nr][:,:,:3])
-plt.subplot(122)
-plt.imshow(y_train[img_nr])
-plt.show()
+    plt.figure(figsize=(12,6))
+    plt.subplot(121)
+    plt.imshow(X[i][:,:,:3])
+    plt.subplot(122)
+    plt.imshow(y[i])
+    plt.show()
+
+smooth = 1.
+
+from keras import backend as K
+
+def dice_coef(y_true, y_pred):
+    y_true_f = K.flatten(y_true)
+    y_pred_f = K.flatten(y_pred)
+    intersection = K.sum(y_true_f * y_pred_f)
+    coef = (2. * intersection + K.epsilon()) / (K.sum(y_true_f) + K.sum(y_pred_f) + K.epsilon())
+    return coef
 
 model = binary_unet(128,128,5)
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[dice_coef])
 
-results = model.fit(X_train, y_train, 
-                    batch_size=16, 
+results = model.fit(train_datagen, 
                     verbose=1, 
-                    epochs=5, 
-                    shuffle=False)
+                    epochs=100, 
+                    shuffle=True)
 
-print("Evaluate on test data")
-results = model.evaluate(X_test, y_test, batch_size=16)
-print("test loss, test acc:", results)
-
-preds_test = model.predict(X_test, verbose=1) # (len(X_test), 128, 128, 1)
-
-preds_test_t = (preds_test > 0.5).astype(np.uint8) 
-
-for i in range(len(X_test)):
-
-    if np.count_nonzero(preds_test_t[i] == 1):
-
-        plt.figure(figsize=(12,6))
-        plt.subplot(121)
-        plt.imshow(X_test[i][:,:,:3])
-        plt.subplot(122)
-        plt.imshow(preds_test_t[i])
-        plt.show()
+model.save('pv_detection')
 

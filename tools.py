@@ -71,3 +71,16 @@ del output
 #         print(rename)
 #         os.rename(name, rename)
 
+
+def load_img_as_array(path):
+    # read img as array 
+    import rasterio
+    import numpy as np
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler() 
+    img_array = rasterio.open(path).read()
+    img_array = np.moveaxis(img_array, 0, -1)
+    img_array = scaler.fit_transform(img_array.reshape(-1, img_array.shape[-1])).reshape(img_array.shape)
+
+    return img_array
+
