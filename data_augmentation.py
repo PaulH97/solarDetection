@@ -6,10 +6,8 @@ import rasterio
 import tifffile as tiff
 from matplotlib import pyplot as plt
 
-images_path="data/images/" #path to original images
-masks_path = "data/masks/"
-img_augmented_path="data/augmented/augmented_images/" # path to store aumented images
-msk_augmented_path="data/augmented/augmented_masks/" # path to store aumented images
+images_path= r"D:\Universität\Master_GeoInfo\Masterarbeit\data\Crops\All\img"
+masks_path = r"D:\Universität\Master_GeoInfo\Masterarbeit\data\Crops\All\mask"
 
 seed_for_random = 42
 
@@ -28,13 +26,13 @@ def v_flip(image, seed):
 
 def v_transl(image, seed):
     random.seed(seed)
-    n_pixels = random.randint(-64,64)
+    n_pixels = random.randint(-128,128)
     vtranslated_img = np.roll(image, n_pixels, axis=0)
     return vtranslated_img
 
 def h_transl(image, seed):
     random.seed(seed)
-    n_pixels = random.randint(-64,64)
+    n_pixels = random.randint(-128,128)
     htranslated_img = np.roll(image, n_pixels, axis=1)
     return htranslated_img
 
@@ -57,33 +55,37 @@ for i in range(len(images)):
     original_image = load_img_as_array(image)
     original_mask = load_img_as_array(mask)
     
-    key = random.choice(list(transformations)) #randomly choosing method to call
-    seed = random.randint(1,100)  #Generate seed to supply transformation functions. 
-    transformed_image = transformations[key](original_image, seed)
-    transformed_mask = transformations[key](original_mask, seed)
+    for idx, transformation in enumerate(list(transformations)): 
 
-    plt.figure(figsize=(12,6))
-    plt.subplot(121)
-    plt.imshow(original_image[:,:,:3])
-    plt.subplot(122)
-    plt.imshow(transformed_image[:,:,:3])
-    plt.show()
+        seed = random.randint(1,100)  #Generate seed to supply transformation functions. 
+        transformed_image = transformations[transformation](original_image, seed)
+        transformed_mask = transformations[transformation](original_mask, seed)
 
-    import pdb
-    pdb.set_trace()
+        # rows, cols = 2, 2
+        # fig = plt.figure(figsize=(12,12))
 
-    new_image_path= "%s/augmented_image_%s.tif" %(img_augmented_path, i)
-    new_mask_path = "%s/augmented_mask_%s.tif" %(msk_augmented_path, i)   #Do not save as JPG
-    
-    new_img = rasterio.open(new_image_path,'w', driver='Gtiff',
-                width=transformed_image.shape[0], height=transformed_image.shape[1],
-                count=5,
-                dtype=rasterio.float32)
-    
-    for band in transformed_image.shape[-1]:
-        new_img.write(transformed_image[:,:,band])
-    new_img.close() 
-    
-    tiff.imwrite(new_mask_path, transformed_mask)
+        # plt.subplot(rows, cols, 1)
+        # plt.imshow(original_image[:,:,:3])
+        # plt.subplot(rows, cols, 2)
+        # plt.imshow(transformed_image[:,:,:3])
+        # plt.subplot(rows, cols, 3)
+        # plt.imshow(original_mask)
+        # plt.subplot(rows, cols, 4)
+        # plt.imshow(transformed_mask)
+        # plt.show()
+
+        new_image_path= images[i].split(".")[0] + "_aug{}.tif".format(idx)
+        new_mask_path = masks[i].split(".")[0] + "_aug{}.tif".format(idx)
+        
+        new_img = rasterio.open(new_image_path,'w', driver='Gtiff',
+                    width=transformed_image.shape[0], height=transformed_image.shape[1],
+                    count=5,
+                    dtype=rasterio.float32)
+        
+        for band in range(transformed_image.shape[-1]-1):
+            new_img.write(transformed_image[:,:,band], band+1)
+        new_img.close() 
+        
+        tiff.imwrite(new_mask_path, transformed_mask)
 
     

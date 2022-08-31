@@ -35,30 +35,30 @@ def resizeRaster(input_raster, output_path, raster_sample):
             dataset.write_band(1, array)
             print(f"Changed raster size from: {src.width, src.height} to {dataset.width, dataset.height}.")
 
-from osgeo import gdal, gdalconst
+# from osgeo import gdal, gdalconst
 
-inputfile = vv
-input = gdal.Open(inputfile, gdalconst.GA_ReadOnly)
-inputProj = input.GetProjection()
-inputTrans = input.GetGeoTransform()
+# inputfile = vv
+# input = gdal.Open(inputfile, gdalconst.GA_ReadOnly)
+# inputProj = input.GetProjection()
+# inputTrans = input.GetGeoTransform()
 
-referencefile = b2
-reference = gdal.Open(referencefile, gdalconst.GA_ReadOnly)
-referenceProj = reference.GetProjection()
-referenceTrans = reference.GetGeoTransform()
-bandreference = reference.GetRasterBand(1)    
-x = reference.RasterXSize 
-y = reference.RasterYSize
+# referencefile = b2
+# reference = gdal.Open(referencefile, gdalconst.GA_ReadOnly)
+# referenceProj = reference.GetProjection()
+# referenceTrans = reference.GetGeoTransform()
+# bandreference = reference.GetRasterBand(1)    
+# x = reference.RasterXSize 
+# y = reference.RasterYSize
 
-outputfile = out
-driver= gdal.GetDriverByName('GTiff')
-output = driver.Create(outputfile, x, y, 1, bandreference.DataType)
-output.SetGeoTransform(referenceTrans)
-output.SetProjection(referenceProj)
+# outputfile = out
+# driver= gdal.GetDriverByName('GTiff')
+# output = driver.Create(outputfile, x, y, 1, bandreference.DataType)
+# output.SetGeoTransform(referenceTrans)
+# output.SetProjection(referenceProj)
 
-gdal.ReprojectImage(input, output, inputProj, referenceProj, gdalconst.GRA_Bilinear)
+# gdal.ReprojectImage(input, output, inputProj, referenceProj, gdalconst.GRA_Bilinear)
 
-del output
+# del output
 
 # path = r"D:\Universität\Master_GeoInfo\Masterarbeit\data\SolarParks\raster"
 # folders = os.listdir(path)

@@ -122,30 +122,30 @@ for id in list_id:
             idx_noPV.append(idx)        
         col += 1
 
-    random_idx = random.sample(idx_noPV,k=len(idx_PV))
+    # random_idx = random.sample(idx_noPV,k=len(idx_PV))
 
-    for idx, label in enumerate(labels):
+    # for idx, label in enumerate(labels):
 
-        if idx in random_idx:
+    #     if idx in random_idx:
 
-            tiff.imwrite(os.path.join(mask_out, f'{id}_mask_{idx}_nopv.tif'), label)
+    #         tiff.imwrite(os.path.join(mask_out, f'{id}_mask_{idx}_nopv.tif'), label)
 
-            raster_muster = rasterio.open(sen2_sen1_mask[0])
-            #transform_xy = raster_muster.transform * col_row
-            #transform = rasterio.transform.from_origin(transform_xy[0], transform_xy[1], xsize=10, ysize=10)
-            #crs = raster_muster.crs
+    #         raster_muster = rasterio.open(sen2_sen1_mask[0])
+    #         #transform_xy = raster_muster.transform * col_row
+    #         #transform = rasterio.transform.from_origin(transform_xy[0], transform_xy[1], xsize=10, ysize=10)
+    #         #crs = raster_muster.crs
 
-            final = rasterio.open(os.path.join(img_out, f'{id}_img_{idx}_nopv.tif'),'w', driver='Gtiff',
-                            width=patch_size, height=patch_size,
-                            count=5,
-                            #crs=crs,
-                            #transform=transform,
-                            dtype=rasterio.float32)
+    #         final = rasterio.open(os.path.join(img_out, f'{id}_img_{idx}_nopv.tif'),'w', driver='Gtiff',
+    #                         width=patch_size, height=patch_size,
+    #                         count=5,
+    #                         #crs=crs,
+    #                         #transform=transform,
+    #                         dtype=rasterio.float32)
         
-            final.write(red[idx][:,:,0],1) # red
-            final.write(green[idx][:,:,0],2) # green
-            final.write(blue[idx][:,:,0],3) # blue
-            final.write(vv[idx][:,:,0],4) # vv
-            final.write(vh[idx][:,:,0],5) # vh
-            final.close()
+    #         final.write(red[idx][:,:,0],1) # red
+    #         final.write(green[idx][:,:,0],2) # green
+    #         final.write(blue[idx][:,:,0],3) # blue
+    #         final.write(vv[idx][:,:,0],4) # vv
+    #         final.write(vh[idx][:,:,0],5) # vh
+    #         final.close()
 
