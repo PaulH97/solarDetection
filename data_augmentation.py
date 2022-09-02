@@ -61,18 +61,18 @@ for i in range(len(images)):
         transformed_image = transformations[transformation](original_image, seed)
         transformed_mask = transformations[transformation](original_mask, seed)
 
-        # rows, cols = 2, 2
-        # fig = plt.figure(figsize=(12,12))
+        rows, cols = 2, 2
+        fig = plt.figure(figsize=(12,12))
 
-        # plt.subplot(rows, cols, 1)
-        # plt.imshow(original_image[:,:,:3])
-        # plt.subplot(rows, cols, 2)
-        # plt.imshow(transformed_image[:,:,:3])
-        # plt.subplot(rows, cols, 3)
-        # plt.imshow(original_mask)
-        # plt.subplot(rows, cols, 4)
-        # plt.imshow(transformed_mask)
-        # plt.show()
+        plt.subplot(rows, cols, 1)
+        plt.imshow(original_image[:,:,:3])
+        plt.subplot(rows, cols, 2)
+        plt.imshow(transformed_image[:,:,:3])
+        plt.subplot(rows, cols, 3)
+        plt.imshow(original_mask)
+        plt.subplot(rows, cols, 4)
+        plt.imshow(transformed_mask)
+        plt.show()
 
         new_image_path= images[i].split(".")[0] + "_aug{}.tif".format(idx)
         new_mask_path = masks[i].split(".")[0] + "_aug{}.tif".format(idx)
@@ -87,5 +87,8 @@ for i in range(len(images)):
         new_img.close() 
         
         tiff.imwrite(new_mask_path, transformed_mask)
+
+        import pdb
+        pdb.set_trace()
 
     

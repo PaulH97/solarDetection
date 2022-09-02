@@ -35,11 +35,7 @@ class CustomImageGenerator(Sequence):
             img_array = rasterio.open(file_path).read()
             img_array = np.moveaxis(img_array, 0, -1)
             img_array = scaler.fit_transform(img_array.reshape(-1, img_array.shape[-1])).reshape(img_array.shape)
-
-            # preprocess images / data augmentation
-            img_array = np.rot90(img_array)
-            
-
+          
             X[i] = img_array
             
         
@@ -49,11 +45,6 @@ class CustomImageGenerator(Sequence):
             mask_array = rasterio.open(file_path).read()
             mask_array = np.moveaxis(mask_array, 0, -1)
             mask_array = scaler.fit_transform(mask_array.reshape(-1, mask_array.shape[-1])).reshape(mask_array.shape)
-
-            # preprocess images / data augmentation
-
-
-
 
             y[i] = mask_array
         

@@ -65,7 +65,7 @@ model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[dice_coef])
 
 results = model.fit(train_datagen, 
                     verbose=1, 
-                    epochs=100, 
+                    epochs=50, 
                     shuffle=True)
 
 model.save('pv_detection')
