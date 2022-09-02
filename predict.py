@@ -3,7 +3,6 @@ from matplotlib import pyplot as plt
 import rasterio
 import tensorflow as tf 
 import os
-import rasterio
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 from keras import backend as K
