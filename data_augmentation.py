@@ -88,7 +88,4 @@ for i in range(len(images)):
         
         tiff.imwrite(new_mask_path, transformed_mask)
 
-        import pdb
-        pdb.set_trace()
-
     
