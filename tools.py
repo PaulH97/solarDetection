@@ -1,6 +1,12 @@
 import yaml
 import rasterio
 from patchify import patchify
+from rasterio import features
+from rasterio.enums import MergeAlg
+import numpy as np
+import geopandas as gdp
+import gdal
+import os
 
 vv = r"D:\Universität\Master_GeoInfo\Masterarbeit\data\Sentinel1\2021\CARD_BS_MC\33UVT\S1_CARD-BS-MC_202110_33UVT_VV.tif"
 b2 = r"D:\Universität\Master_GeoInfo\Masterarbeit\data\Sentinel2\L3_WASP\2021\33UVT\SENTINEL2X_20210915-000000-000_L3A_T33UVT_C_V1-2_FRC_B2.tif"
@@ -35,42 +41,6 @@ def resizeRaster(input_raster, output_path, raster_sample):
             dataset.write_band(1, array)
             print(f"Changed raster size from: {src.width, src.height} to {dataset.width, dataset.height}.")
 
-# from osgeo import gdal, gdalconst
-
-# inputfile = vv
-# input = gdal.Open(inputfile, gdalconst.GA_ReadOnly)
-# inputProj = input.GetProjection()
-# inputTrans = input.GetGeoTransform()
-
-# referencefile = b2
-# reference = gdal.Open(referencefile, gdalconst.GA_ReadOnly)
-# referenceProj = reference.GetProjection()
-# referenceTrans = reference.GetGeoTransform()
-# bandreference = reference.GetRasterBand(1)    
-# x = reference.RasterXSize 
-# y = reference.RasterYSize
-
-# outputfile = out
-# driver= gdal.GetDriverByName('GTiff')
-# output = driver.Create(outputfile, x, y, 1, bandreference.DataType)
-# output.SetGeoTransform(referenceTrans)
-# output.SetProjection(referenceProj)
-
-# gdal.ReprojectImage(input, output, inputProj, referenceProj, gdalconst.GRA_Bilinear)
-
-# del output
-
-# path = r"D:\Universität\Master_GeoInfo\Masterarbeit\data\SolarParks\raster"
-# folders = os.listdir(path)
-# for folder in folders:
-#     files = os.listdir(os.path.join(path, folder))
-#     for f in files:
-#         name = os.path.join(path, folder, f)
-#         print(name)
-#         rename = os.path.join(path, folder, str(folder) + "_" + f)
-#         print(rename)
-#         os.rename(name, rename)
-
 
 def load_img_as_array(path):
     # read img as array 
@@ -87,11 +57,28 @@ def load_img_as_array(path):
 def resampleRaster(raster_path, output_folder, resolution):
     
     name = os.path.basename(raster_path)
-    outout_file = os.path.join(output_folder, name + "_resample.tif")
+    output_file = os.path.join(output_folder, name + "_resample.tif")
 
     raster = gdal.Open(raster_path)
-    ds = gdal.Warp(output_file, dst_ds, xRes=resolution, yRes=resolution, resampleAlg="bilinear", format="GTiff")
+    ds = gdal.Warp(output_file, raster, xRes=resolution, yRes=resolution, resampleAlg="bilinear", format="GTiff")
 
     return
 
+def rasterizeShapefile(raster_path, vector_path, output_path):
+    
+    raster = rasterio.open(raster_path)
+    vector = gdp.read_file(vector_path)
+    
+    geom_value = ((geom,value) for geom, value in zip(vector.geometry, vector['gridcode']))
+    osm_res = 10
+    crs    = rasterio.crs.CRS.from_epsg(vector.crs.to_epsg())
+    transform = raster.transform
 
+    r_out = os.path.join(output_path, os.path.basename(vector_path).split(".")[0] +".tif")
+    with rasterio.open(r_out, 'w+', driver='GTiff',
+            height = raster.height, width = raster.width,
+            count = 1, dtype="int16", crs = crs, transform=transform) as rst:
+        out_arr = rst.read(1)
+        rasterized = features.rasterize(shapes=geom_value, fill=0, out=out_arr, transform = rst.transform)
+        rst.write_band(1, rasterized)
+    rst.close()
