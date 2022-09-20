@@ -1,4 +1,3 @@
-
 import rasterio 
 import numpy as np
 from glob import glob
@@ -8,6 +7,9 @@ import tifffile as tiff
 import os
 import random
 from sklearn.preprocessing import MinMaxScaler
+import gdal
+from tools import resampleRaster
+
 
 path_data = r"D:\Universität\Master_GeoInfo\Masterarbeit\data"
 

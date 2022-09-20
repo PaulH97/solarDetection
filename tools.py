@@ -84,3 +84,14 @@ def load_img_as_array(path):
 
     return img_array
 
+def resampleRaster(raster_path, output_folder, resolution):
+    
+    name = os.path.basename(raster_path)
+    outout_file = os.path.join(output_folder, name + "_resample.tif")
+
+    raster = gdal.Open(raster_path)
+    ds = gdal.Warp(output_file, dst_ds, xRes=resolution, yRes=resolution, resampleAlg="bilinear", format="GTiff")
+
+    return
+
+
