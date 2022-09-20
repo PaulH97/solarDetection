@@ -1,0 +1,11 @@
+version: 0.1
+
+data_source:
+   Sentinel1: "path/to/directory" # bands -> vv + vh 
+   Sentinel2: "path/to/directory" # bands -> B2-B12
+
+model:
+  Unet_Sen1_Sen2: True
+  Unet_Sen2: False
+
+output: "path to directory"
