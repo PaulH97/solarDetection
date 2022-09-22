@@ -43,7 +43,7 @@ for id in list_id:
 
         raster = rasterio.open(band)
         array = raster.read()[:,:10980,:10980]    
-        array = array.reshape(10980,10980,1) # (10980,10980,1)
+        array = np.moveaxis(array, 0, -1) # (10980,10980,1)
         # resize array for patch size? 
         patches = patchify(array, (patch_size, patch_size, 1), step=patch_size)
 

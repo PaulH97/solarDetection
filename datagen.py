@@ -8,12 +8,11 @@ warnings.filterwarnings("ignore", category=rasterio.errors.NotGeoreferencedWarni
 
 class CustomImageGenerator(Sequence):
 
-    def __init__(self, X_set, y_set, output_size, augmentation=False, batch_size=8):
+    def __init__(self, X_set, y_set, output_size, batch_size=8):
 
         self.x = X_set # Paths to all images as list
         self.y = y_set # paths to all masks as list
         self.output_size = output_size
-        self.augmentation = augmentation
         self.batch_size = batch_size
 
     def __len__(self):
@@ -21,7 +20,7 @@ class CustomImageGenerator(Sequence):
     
     def __getitem__(self, idx):
         
-        X = np.empty((self.batch_size, *self.output_size, 5)) # example shape (8,128,128,5)
+        X = np.empty((self.batch_size, *self.output_size, 12)) # example shape (8,128,128,12)
         y = np.empty((self.batch_size, *self.output_size, 1))
 
         batch_x = self.x[idx*self.batch_size:(idx+1)*self.batch_size]
@@ -63,7 +62,7 @@ class CustomImageGeneratorPrediction(Sequence):
     
     def __getitem__(self, idx):
         
-        X = np.empty((self.batch_size, *self.output_size, 5)) # example shape (8,128,128,5)
+        X = np.empty((self.batch_size, *self.output_size, 12)) # example shape (8,128,128,12)
         
         batch_x = self.x[idx*self.batch_size:(idx+1)*self.batch_size]
 

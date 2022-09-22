@@ -66,7 +66,7 @@ from keras.models import Model
 from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D, concatenate, Conv2DTranspose, BatchNormalization, Dropout, Lambda
 from keras import backend as K
 
-def multi_unet_model(IMG_HEIGHT=256, IMG_WIDTH=256, IMG_CHANNELS=5):
+def multi_unet_model(IMG_HEIGHT=256, IMG_WIDTH=256, IMG_CHANNELS=12):
 #Build the model
     inputs = Input((IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
     #s = Lambda(lambda x: x / 255)(inputs)   #No need for this if we normalize our inputs beforehand
