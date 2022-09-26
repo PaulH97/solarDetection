@@ -1,11 +1,9 @@
-import yaml
 import rasterio
 from patchify import patchify
 from rasterio import features
-from rasterio.enums import MergeAlg
 import numpy as np
 import geopandas as gdp
-import gdal
+from osgeo import gdal
 import os
 from sklearn.preprocessing import MinMaxScaler
 from rasterio import Affine
@@ -19,9 +17,6 @@ from keras import backend as K
 
 def load_img_as_array(path):
     # read img as array 
-    import rasterio
-    import numpy as np
-    from sklearn.preprocessing import MinMaxScaler
     scaler = MinMaxScaler() 
     img_array = rasterio.open(path).read()
     img_array = np.moveaxis(img_array, 0, -1)
@@ -40,7 +35,7 @@ def resampleRaster(raster_path, output_folder, resolution):
 
     return ds
 
-def rasterizeShapefile(raster_path, vector_path, output_folder, col_name):
+def rasterizeShapefile(raster_path, vector_path, output_folder, tile_name, col_name):
     
     raster = rasterio.open(raster_path)
     vector = gdp.read_file(vector_path)
@@ -50,7 +45,9 @@ def rasterizeShapefile(raster_path, vector_path, output_folder, col_name):
     crs    = raster.crs
     transform = raster.transform
 
-    r_out = os.path.join(output_folder, os.path.basename(vector_path).split(".")[0] +".tif")
+    #tile_name = '_'.join(tile_name.split("_")[-2:])
+    r_out = os.path.join(output_folder, os.path.basename(vector_path).split(".")[0] + tile_name +".tif")
+
     with rasterio.open(r_out, 'w+', driver='GTiff',
             height = raster.height, width = raster.width,
             count = 1, dtype="int16", crs = crs, transform=transform) as rst:
@@ -58,6 +55,7 @@ def rasterizeShapefile(raster_path, vector_path, output_folder, col_name):
         rasterized = features.rasterize(shapes=geom_value, fill=0, out=out_arr, transform = rst.transform)
         rst.write_band(1, rasterized)
     rst.close()
+    return r_out
 
 def patchifyRasterAsArray(array, patch_size):
 
@@ -80,28 +78,27 @@ def patchifyRasterAsArray(array, patch_size):
     return result
 
 
-def savePatches(patches, output_folder, raster_path):
+def savePatches(patches, output_folder, tile_name):
 
-    sentinel_tile = os.path.basename(raster_path).split("_")[3]
     mask_out = os.path.join(output_folder, "Crops", "mask") 
     img_out = os.path.join(output_folder, "Crops", "img") 
+    
+    if not os.path.exists(mask_out):
+        os.makedirs(mask_out)
+    if not os.path.exists(img_out):
+        os.makedirs(img_out)
+        
+    mask_name = "SolarParks" + tile_name
 
-    for idx, mask in enumerate(patches["SolarParks"]):
+    for idx, mask in enumerate(patches[mask_name]):
 
         if  np.count_nonzero(mask == 1):
             
-            tiff.imwrite(os.path.join(mask_out, f'{sentinel_tile}_mask_{idx}_pv.tif'), mask)
+            tiff.imwrite(os.path.join(mask_out, f'{tile_name}_mask_{idx}_pv.tif'), mask)
 
-            raster_muster = rasterio.open(raster_path)
-            #transform_xy = raster_muster.transform * col_row
-            #transform = Affine.translation(xoff=transform_xy[0], yoff=transform_xy[1]) * Affine.scale(10,10)
-            #crs = raster_muster.crs
-
-            final = rasterio.open(os.path.join(img_out, f'{sentinel_tile}_img_{idx}_pv.tif'),'w', driver='Gtiff',
+            final = rasterio.open(os.path.join(img_out, f'{tile_name}_img_{idx}_pv.tif'),'w', driver='Gtiff',
                             width=patches["B2"][0].shape[0], height=patches["B2"][0].shape[1],
                             count=12,
-                            #crs=crs,
-                            #transform=transform,
                             dtype=rasterio.float64)
         
             final.write(patches["B2"][idx][:,:,0],1) 
@@ -117,7 +114,6 @@ def savePatches(patches, output_folder, raster_path):
             final.write(patches["VV"][idx][:,:,0],11)
             final.write(patches["VH"][idx][:,:,0],12)
             final.close()
-
     
     return img_out, mask_out
 
@@ -187,6 +183,9 @@ def imageAugmentation(images_path, masks_path):
 
     for msk in os.listdir(masks_path):  
         masks.append(os.path.join(masks_path,msk))
+    
+    images.sort()
+    masks.sort()      
 
     for i in range(len(masks)): 
         
@@ -202,20 +201,6 @@ def imageAugmentation(images_path, masks_path):
             transformed_image = transformations[transformation](original_image, seed)
             transformed_mask = transformations[transformation](original_mask, seed)
 
-            if idx == 2:
-                rows, cols = 2, 2
-                plt.figure(figsize=(12,12))
-
-                plt.subplot(rows, cols, 1)
-                plt.imshow(original_image[:,:,:3])
-                plt.subplot(rows, cols, 2)
-                plt.imshow(transformed_image[:,:,:3])
-                plt.subplot(rows, cols, 3)
-                plt.imshow(original_mask)
-                plt.subplot(rows, cols, 4)
-                plt.imshow(transformed_mask)
-                plt.show()
-
             new_image_path= image.split(".")[0] + "_aug{}.tif".format(idx)
             new_mask_path = mask.split(".")[0] + "_aug{}.tif".format(idx)
             
@@ -229,6 +214,21 @@ def imageAugmentation(images_path, masks_path):
             new_img.close() 
             
             tiff.imwrite(new_mask_path, transformed_mask)
+            
+            if i in [5, 50]: 
+                rows, cols = 2, 2
+                plt.figure(figsize=(12,12))
+        
+                plt.subplot(rows, cols, 1)
+                plt.imshow(original_image[:,:,:3])
+                plt.subplot(rows, cols, 2)
+                plt.imshow(transformed_image[:,:,:3])
+                plt.subplot(rows, cols, 3)
+                plt.imshow(original_mask)
+                plt.subplot(rows, cols, 4)
+                plt.imshow(transformed_mask)
+                plt.show()
+   
     return
 
 def dice_coef(y_true, y_pred):
@@ -279,4 +279,25 @@ def ScenceFinderAOI(shape_path, satellite, processing_level, product_type, start
 
     return list_path
 
+def cutString(string):
+    string = '_'.join(string.split("_")[-2:])
+    return string
 
+def filterScenes(sceneList):
+    sceneList = random.sample(sceneList, len(sceneList))
+    final_list = []
+
+    for item in sceneList:
+        date = item[0].split("_")[-2]
+        id = item[0].split("_")[-1]
+        if len(final_list) == 0:
+            final_list.append(item)
+        else:
+            count = 0
+            for i in final_list:
+                if (date in i[0]) or (id in i[0]):
+                    count += 1
+            if count == 0:
+                final_list.append(item)
+                
+    return final_list
