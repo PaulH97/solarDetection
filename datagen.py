@@ -3,6 +3,7 @@ import numpy as np
 import rasterio
 from sklearn.preprocessing import MinMaxScaler
 import warnings
+from tools import load_img_as_array
 
 warnings.filterwarnings("ignore", category=rasterio.errors.NotGeoreferencedWarning)
 
@@ -26,26 +27,28 @@ class CustomImageGenerator(Sequence):
         batch_x = self.x[idx*self.batch_size:(idx+1)*self.batch_size]
         batch_y = self.y[idx*self.batch_size:(idx+1)*self.batch_size]
         
-        scaler = MinMaxScaler()
+        #scaler = MinMaxScaler()
 
         for i, file_path in enumerate(batch_x):
 
             # read img as array 
-            img_array = rasterio.open(file_path).read()
-            img_array = np.moveaxis(img_array, 0, -1)
-            img_array = scaler.fit_transform(img_array.reshape(-1, img_array.shape[-1])).reshape(img_array.shape)
+            # img_array = rasterio.open(file_path).read()
+            # img_array = np.moveaxis(img_array, 0, -1)
+            # img_array = scaler.fit_transform(img_array.reshape(-1, img_array.shape[-1])).reshape(img_array.shape)
           
-            X[i] = img_array
+            # X[i] = img_array
+            X[i] = load_img_as_array(file_path)
             
         
         for i, file_path in enumerate(batch_y):
 
             # read mask as array
-            mask_array = rasterio.open(file_path).read()
-            mask_array = np.moveaxis(mask_array, 0, -1)
-            mask_array = scaler.fit_transform(mask_array.reshape(-1, mask_array.shape[-1])).reshape(mask_array.shape)
+            # mask_array = rasterio.open(file_path).read()
+            # mask_array = np.moveaxis(mask_array, 0, -1)
+            # mask_array = scaler.fit_transform(mask_array.reshape(-1, mask_array.shape[-1])).reshape(mask_array.shape)
 
-            y[i] = mask_array
+            # y[i] = mask_array
+            y[i] = load_img_as_array(file_path)
         
         return X, y
 
