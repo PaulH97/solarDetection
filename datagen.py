@@ -9,7 +9,7 @@ warnings.filterwarnings("ignore", category=rasterio.errors.NotGeoreferencedWarni
 
 class CustomImageGenerator(Sequence):
 
-    def __init__(self, X_set, y_set, output_size, batch_size=8):
+    def __init__(self, X_set, y_set, output_size, batch_size=16):
 
         self.x = X_set # Paths to all images as list
         self.y = y_set # paths to all masks as list
@@ -54,9 +54,9 @@ class CustomImageGenerator(Sequence):
 
 class CustomImageGeneratorPrediction(Sequence):
 
-    def __init__(self, X_set, output_size, batch_size=8):
+    def __init__(self, X_set, output_size, batch_size=5):
 
-        self.x = X_set # paths to all masks as list
+        self.x = X_set # paths to all imgages as list
         self.output_size = output_size
         self.batch_size = batch_size
 
@@ -65,20 +65,18 @@ class CustomImageGeneratorPrediction(Sequence):
     
     def __getitem__(self, idx):
         
-        X = np.empty((self.batch_size, *self.output_size, 12)) # example shape (8,128,128,12)
+        X = np.empty((self.batch_size, *self.output_size, 12)) # example shape (5,128,128,12)
         
         batch_x = self.x[idx*self.batch_size:(idx+1)*self.batch_size]
-
-        scaler = MinMaxScaler()
-        
+               
         for i, file_path in enumerate(batch_x):
 
             # read mask as array
-            mask_array = rasterio.open(file_path).read()
-            mask_array = np.moveaxis(mask_array, 0, -1)
-            mask_array = scaler.fit_transform(mask_array.reshape(-1, mask_array.shape[-1])).reshape(mask_array.shape)
+            # mask_array = rasterio.open(file_path).read()
+            # mask_array = np.moveaxis(mask_array, 0, -1)
+            # mask_array = scaler.fit_transform(mask_array.reshape(-1, mask_array.shape[-1])).reshape(mask_array.shape)
 
             # preprocess mask
-            X[i] = mask_array
+            X[i] = load_img_as_array(file_path)
         
         return X

@@ -1,11 +1,11 @@
 import rasterio
-from patchify import patchify
+from patchify import patchify,unpatchify
 from rasterio import features
 import numpy as np
 import geopandas as gdp
 from osgeo import gdal
 import os
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, QuantileTransformer
 from rasterio import Affine
 import tifffile as tiff
 import random
@@ -13,22 +13,20 @@ from matplotlib import pyplot as plt
 import requests
 import geopandas as gpd
 from keras import backend as K
-
+import shutil
 
 def load_img_as_array(path):
     # read img as array 
-    scaler = MinMaxScaler() 
+    scaler = QuantileTransformer()
     img_array = rasterio.open(path).read()
     img_array = np.moveaxis(img_array, 0, -1)
     img_array = scaler.fit_transform(img_array.reshape(-1, img_array.shape[-1])).reshape(img_array.shape)
+    img_array = np.nan_to_num(img_array)
 
     return img_array
 
-def resampleRaster(raster_path, output_folder, resolution):
+def resampleRaster(raster_path, resolution):
     
-    name = os.path.basename(raster_path)
-    output_file = os.path.join(output_folder, name + "_resample.tif")
-
     raster = gdal.Open(raster_path)
     #ds = gdal.Warp(output_file, raster, xRes=resolution, yRes=resolution, resampleAlg="bilinear", format="GTiff")
     ds = gdal.Warp('', raster, xRes=resolution, yRes=resolution, resampleAlg="bilinear", format="VRT")
@@ -62,7 +60,7 @@ def patchifyRasterAsArray(array, patch_size):
     patches = patchify(array, (patch_size, patch_size, 1), step=patch_size)    
     patchX = patches.shape[0]
     patchY = patches.shape[1]
-    scaler = MinMaxScaler()
+    scaler = QuantileTransformer()
     
     result = []
 
@@ -78,16 +76,23 @@ def patchifyRasterAsArray(array, patch_size):
     return result
 
 
-def savePatches(patches, output_folder, tile_name):
+def savePatchesTrain(patches, output_folder, tile_name):
 
     mask_out = os.path.join(output_folder, "Crops", "mask") 
     img_out = os.path.join(output_folder, "Crops", "img") 
     
     if not os.path.exists(mask_out):
         os.makedirs(mask_out)
+    else:
+        for f in os.listdir(mask_out):
+            os.remove(os.path.join(mask_out, f))
+    
     if not os.path.exists(img_out):
         os.makedirs(img_out)
-        
+    else:
+        for f in os.listdir(img_out):
+            os.remove(os.path.join(img_out, f))
+                
     mask_name = "SolarParks" + tile_name
 
     for idx, mask in enumerate(patches[mask_name]):
@@ -143,6 +148,67 @@ def savePatches(patches, output_folder, tile_name):
     #         final.write(vv[idx][:,:,0],4) # vv
     #         final.write(vh[idx][:,:,0],5) # vh
     #         final.close()
+
+def savePatches(patches, output_folder):
+
+    img_out = os.path.join(output_folder, "Crops", "img") 
+    
+    if not os.path.exists(img_out):
+        os.makedirs(img_out)
+    else:
+        for f in os.listdir(img_out):
+            os.remove(os.path.join(img_out, f))
+
+    patches_count = len(patches["B2"])
+
+    if len(patches) == 10:
+        
+        for idx in range(patches_count):
+                
+            final = rasterio.open(os.path.join(img_out, f'img_{idx}.tif'),'w', driver='Gtiff', 
+                            width=patches["B2"][0].shape[0], 
+                            height=patches["B2"][0].shape[1],
+                            count=12,
+                            dtype=rasterio.float64)
+
+            final.write(patches["B2"][idx][:,:,0],1) 
+            final.write(patches["B3"][idx][:,:,0],2) 
+            final.write(patches["B4"][idx][:,:,0],3) 
+            final.write(patches["B5"][idx][:,:,0],4)    
+            final.write(patches["B6"][idx][:,:,0],5)
+            final.write(patches["B7"][idx][:,:,0],6)
+            final.write(patches["B8"][idx][:,:,0],7)
+            final.write(patches["B8A"][idx][:,:,0],8)
+            final.write(patches["B11"][idx][:,:,0],9) 
+            final.write(patches["B12"][idx][:,:,0],10)
+            final.close()
+    else:
+
+        for idx in range(patches_count):
+                
+            final = rasterio.open(os.path.join(img_out, f'img_{idx}.tif'),'w', driver='Gtiff', 
+                            width=patches["B2"][0].shape[0], 
+                            height=patches["B2"][0].shape[1],
+                            count=12,
+                            dtype=rasterio.float64)
+
+            final.write(patches["B2"][idx][:,:,0],1) 
+            final.write(patches["B3"][idx][:,:,0],2) 
+            final.write(patches["B4"][idx][:,:,0],3) 
+            final.write(patches["B5"][idx][:,:,0],4)    
+            final.write(patches["B6"][idx][:,:,0],5)
+            final.write(patches["B7"][idx][:,:,0],6)
+            final.write(patches["B8"][idx][:,:,0],7)
+            final.write(patches["B8A"][idx][:,:,0],8)
+            final.write(patches["B11"][idx][:,:,0],9) 
+            final.write(patches["B12"][idx][:,:,0],10)
+            final.write(patches["VV"][idx][:,:,0],11)
+            final.write(patches["VH"][idx][:,:,0],12)
+            final.close()
+
+    return img_out
+
+
 
 def imageAugmentation(images_path, masks_path):
 
@@ -237,6 +303,13 @@ def dice_coef(y_true, y_pred):
     intersection = K.sum(y_true_f * y_pred_f)
     coef = (2. * intersection + K.epsilon()) / (K.sum(y_true_f) + K.sum(y_pred_f) + K.epsilon())
     return coef
+    
+def jaccard_distance_loss(y_true, y_pred, smooth=100):
+
+    intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
+    sum_ = K.sum(K.abs(y_true) + K.abs(y_pred), axis=-1)
+    jac = (intersection + smooth) / (sum_ - intersection + smooth)
+    return (1 - jac) * smooth
 
 
 def ScenceFinderAOI(shape_path, satellite, processing_level, product_type, start_date, end_date, cloud_cover, output_format='json', maxRecords = 15):
@@ -301,3 +374,36 @@ def filterScenes(sceneList):
                 final_list.append(item)
                 
     return final_list
+
+def predictPatches(model, predict_datagen, raster_path, output_folder):
+
+    prediction = model.predict(predict_datagen, verbose=1) # output shape = (7225,128,128,1)
+    prediction = (prediction > 0.5).astype(np.uint8) 
+    
+    raster = rasterio.open(raster_path)
+    patch_size = prediction.shape[1]
+    x = int(raster.width/patch_size)
+    y = int(raster.height/patch_size)
+    patches_shape = (x, y, 1, patch_size, patch_size, 1)
+
+    prediciton_reshape = np.reshape(prediction, patches_shape) 
+
+    recon_predict = unpatchify(prediciton_reshape, (patch_size*x,patch_size*y,1))
+
+    transform = raster.transform
+    crs = raster.crs
+    name = os.path.basename(raster_path).split(".")[0]
+    predict_out = os.path.join(output_folder, name + "_prediction.tif")
+
+    final = rasterio.open(predict_out, mode='w', driver='Gtiff',
+                    width=recon_predict.shape[0], height=recon_predict.shape[1],
+                    count=1,
+                    crs=crs,
+                    transform=transform,
+                    dtype=rasterio.int16)
+
+    final.write(recon_predict[:,:,0],1) 
+    final.close()
+    
+    return
+

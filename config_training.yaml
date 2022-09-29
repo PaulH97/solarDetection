@@ -1,8 +1,8 @@
 version: 0.1
 
 shapefiles: 
-  AOI: C:\\Users\\Anwender\\Desktop\\test_data\\SolarParks\\aoi_scenes.shp
-  Solar: C:\\Users\\Anwender\\Desktop\\test_data\\SolarParks\\SolarParks.shp
+  AOI: "/home/hoehn/data/input/aoi_scenes.shp"
+  Solar: "/home/hoehn/data/input/SolarParks.shp"
   
 satellite:
   Sentinel1:
@@ -18,4 +18,4 @@ satellite:
     end_date: "2021-12-31T23:59:59Z"
     cloud_cover: 5
   
-output_folder: C:\\Users\\Anwender\\Desktop\\test_data
+output_folder: "/home/hoehn/data/output/"
