@@ -6,6 +6,7 @@ from glob import glob
 from datagen import CustomImageGeneratorPrediction
 from tools import *
 import yaml
+from scipy import stats
 
 # Read data from config file
 if os.path.exists("config.yaml"):
@@ -18,7 +19,7 @@ if os.path.exists("config.yaml"):
         model_path = data['model']['Unet_Sen1_Sen2']
         output_folder = data["output_folder"]
 
-patching = False
+patching = True
 
 sentinel1_paths = glob("{}/*.tif".format(sentinel1_folder))
 sentinel2_paths = glob("{}/*.tif".format(sentinel2_folder))
@@ -33,7 +34,6 @@ if patching:
 
         band_name = os.path.basename(band).split("_")[-1].split(".")[0]
         print("Start patching with band: ", band_name)
-
         raster = rasterio.open(band)
         
         if raster.transform[0] != 10:  
@@ -42,13 +42,20 @@ if patching:
             r_array = np.expand_dims(r_array, axis=0)
         else:
             r_array = raster.read()[:,:10980,:10980]
-            r_array = np.nan_to_num(r_array)
         
         r_array = np.moveaxis(r_array, 0, -1)
+        r_array = np.nan_to_num(r_array)
+
+        if band_name not in ['VV', 'VH']:
+            r_array = r_array / 10000
+            # print("Change max and min value from: ", (r_array.max(), r_array.min()))
+            # r_array[np.where((stats.zscore(r_array) > 3))] = r_array.mean()
+            # r_array[np.where((stats.zscore(r_array) < -3))] = r_array.mean()
+            # print("To: ", (r_array.max(), r_array.min()))
         
         bands_patches[band_name] = patchifyRasterAsArray(r_array, 128)
 
-    patches_path = savePatches(bands_patches, output_folder)
+    patches_path = savePatchesPredict(bands_patches, output_folder)
 
 patches_path = glob(r"{}/Crops/img/*.tif".format(output_folder))
 

@@ -5,7 +5,7 @@ import numpy as np
 import geopandas as gdp
 from osgeo import gdal
 import os
-from sklearn.preprocessing import MinMaxScaler, RobustScaler, QuantileTransformer
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from rasterio import Affine
 import tifffile as tiff
 import random
@@ -17,11 +17,10 @@ import shutil
 
 def load_img_as_array(path):
     # read img as array 
-    scaler = QuantileTransformer()
     img_array = rasterio.open(path).read()
     img_array = np.moveaxis(img_array, 0, -1)
-    img_array = scaler.fit_transform(img_array.reshape(-1, img_array.shape[-1])).reshape(img_array.shape)
-    img_array = np.nan_to_num(img_array)
+    #img_array = scaler.fit_transform(img_array.reshape(-1, img_array.shape[-1])).reshape(img_array.shape)
+    #img_array = np.nan_to_num(img_array)
 
     return img_array
 
@@ -60,7 +59,7 @@ def patchifyRasterAsArray(array, patch_size):
     patches = patchify(array, (patch_size, patch_size, 1), step=patch_size)    
     patchX = patches.shape[0]
     patchY = patches.shape[1]
-    scaler = QuantileTransformer()
+    scaler = MinMaxScaler()
     
     result = []
 
@@ -74,7 +73,6 @@ def patchifyRasterAsArray(array, patch_size):
             result.append(single_patch_img)
     
     return result
-
 
 def savePatchesTrain(patches, output_folder, tile_name):
 
@@ -94,6 +92,9 @@ def savePatchesTrain(patches, output_folder, tile_name):
             os.remove(os.path.join(img_out, f))
                 
     mask_name = "SolarParks" + tile_name
+    band_names = list(patches.keys())[:-1] 
+    band_names.sort()
+    idx_noPV = []
 
     for idx, mask in enumerate(patches[mask_name]):
 
@@ -102,54 +103,37 @@ def savePatchesTrain(patches, output_folder, tile_name):
             tiff.imwrite(os.path.join(mask_out, f'{tile_name}_mask_{idx}_pv.tif'), mask)
 
             final = rasterio.open(os.path.join(img_out, f'{tile_name}_img_{idx}_pv.tif'),'w', driver='Gtiff',
-                            width=patches["B2"][0].shape[0], height=patches["B2"][0].shape[1],
-                            count=12,
+                            width=patches[band_names[0]][0].shape[0], height=patches[band_names[0]][0].shape[1],
+                            count=len(band_names),
                             dtype=rasterio.float64)
-        
-            final.write(patches["B2"][idx][:,:,0],1) 
-            final.write(patches["B3"][idx][:,:,0],2) 
-            final.write(patches["B4"][idx][:,:,0],3) 
-            final.write(patches["B5"][idx][:,:,0],4)    
-            final.write(patches["B6"][idx][:,:,0],5)
-            final.write(patches["B7"][idx][:,:,0],6)
-            final.write(patches["B8"][idx][:,:,0],7)
-            final.write(patches["B8A"][idx][:,:,0],8)
-            final.write(patches["B11"][idx][:,:,0],9) 
-            final.write(patches["B12"][idx][:,:,0],10)
-            final.write(patches["VV"][idx][:,:,0],11)
-            final.write(patches["VH"][idx][:,:,0],12)
+
+            for band_nr, band_name in enumerate(band_names):
+                final.write(patches[band_name][idx][:,:,0],band_nr+1)
             final.close()
+        
+        else:
+            idx_noPV.append(idx)
     
+    random_idx = random.sample(idx_noPV,k=len(os.listdir(mask_out)))
+
+    for idx, mask in enumerate(patches[mask_name]):
+
+        if idx in random_idx:
+
+            tiff.imwrite(os.path.join(mask_out, f'{tile_name}_mask_{idx}_nopv.tif'), mask)
+
+            final = rasterio.open(os.path.join(img_out, f'{tile_name}_img_{idx}_nopv.tif'),'w', driver='Gtiff',
+                            width=patches[band_names[0]][0].shape[0], height=patches[band_names[0]][0].shape[1],
+                            count=len(band_names),
+                            dtype=rasterio.float64)
+
+            for band_nr, band_name in enumerate(band_names):
+                final.write(patches[band_name][idx][:,:,0],band_nr+1)
+            final.close()
+        
     return img_out, mask_out
 
-    # random_idx = random.sample(idx_noPV,k=len(idx_PV))
-
-    # for idx, label in enumerate(labels):
-
-    #     if idx in random_idx:
-
-    #         tiff.imwrite(os.path.join(mask_out, f'{id}_mask_{idx}_nopv.tif'), label)
-
-    #         raster_muster = rasterio.open(sen2_sen1_mask[0])
-    #         #transform_xy = raster_muster.transform * col_row
-    #         #transform = rasterio.transform.from_origin(transform_xy[0], transform_xy[1], xsize=10, ysize=10)
-    #         #crs = raster_muster.crs
-
-    #         final = rasterio.open(os.path.join(img_out, f'{id}_img_{idx}_nopv.tif'),'w', driver='Gtiff',
-    #                         width=patch_size, height=patch_size,
-    #                         count=5,
-    #                         #crs=crs,
-    #                         #transform=transform,
-    #                         dtype=rasterio.float32)
-        
-    #         final.write(red[idx][:,:,0],1) # red
-    #         final.write(green[idx][:,:,0],2) # green
-    #         final.write(blue[idx][:,:,0],3) # blue
-    #         final.write(vv[idx][:,:,0],4) # vv
-    #         final.write(vh[idx][:,:,0],5) # vh
-    #         final.close()
-
-def savePatches(patches, output_folder):
+def savePatchesPredict(patches, output_folder):
 
     img_out = os.path.join(output_folder, "Crops", "img") 
     
@@ -158,57 +142,46 @@ def savePatches(patches, output_folder):
     else:
         for f in os.listdir(img_out):
             os.remove(os.path.join(img_out, f))
+    
+    band_names = list(patches.keys())
+    band_names.sort()
 
-    patches_count = len(patches["B2"])
+    for idx in range(len(patches[band_names[0]])):
 
-    if len(patches) == 10:
+            final = rasterio.open(os.path.join(img_out, f'img_{idx}.tif'),'w', driver='Gtiff',
+                            width=patches[band_names[0]][0].shape[0], height=patches[band_names[0]][0].shape[1],
+                            count=len(band_names),
+                            dtype=rasterio.float64)
+
+            for band_nr, band_name in enumerate(band_names):
+                final.write(patches[band_name][idx][:,:,0],band_nr+1)
+            final.close()
         
-        for idx in range(patches_count):
+    # else:
+
+    #     for idx in range(patches_count):
                 
-            final = rasterio.open(os.path.join(img_out, f'img_{idx}.tif'),'w', driver='Gtiff', 
-                            width=patches["B2"][0].shape[0], 
-                            height=patches["B2"][0].shape[1],
-                            count=12,
-                            dtype=rasterio.float64)
+    #         final = rasterio.open(os.path.join(img_out, f'img_{idx}.tif'),'w', driver='Gtiff', 
+    #                         width=patches["B2"][0].shape[0], 
+    #                         height=patches["B2"][0].shape[1],
+    #                         count=10,
+    #                         dtype=rasterio.float64)
 
-            final.write(patches["B2"][idx][:,:,0],1) 
-            final.write(patches["B3"][idx][:,:,0],2) 
-            final.write(patches["B4"][idx][:,:,0],3) 
-            final.write(patches["B5"][idx][:,:,0],4)    
-            final.write(patches["B6"][idx][:,:,0],5)
-            final.write(patches["B7"][idx][:,:,0],6)
-            final.write(patches["B8"][idx][:,:,0],7)
-            final.write(patches["B8A"][idx][:,:,0],8)
-            final.write(patches["B11"][idx][:,:,0],9) 
-            final.write(patches["B12"][idx][:,:,0],10)
-            final.close()
-    else:
-
-        for idx in range(patches_count):
-                
-            final = rasterio.open(os.path.join(img_out, f'img_{idx}.tif'),'w', driver='Gtiff', 
-                            width=patches["B2"][0].shape[0], 
-                            height=patches["B2"][0].shape[1],
-                            count=12,
-                            dtype=rasterio.float64)
-
-            final.write(patches["B2"][idx][:,:,0],1) 
-            final.write(patches["B3"][idx][:,:,0],2) 
-            final.write(patches["B4"][idx][:,:,0],3) 
-            final.write(patches["B5"][idx][:,:,0],4)    
-            final.write(patches["B6"][idx][:,:,0],5)
-            final.write(patches["B7"][idx][:,:,0],6)
-            final.write(patches["B8"][idx][:,:,0],7)
-            final.write(patches["B8A"][idx][:,:,0],8)
-            final.write(patches["B11"][idx][:,:,0],9) 
-            final.write(patches["B12"][idx][:,:,0],10)
-            final.write(patches["VV"][idx][:,:,0],11)
-            final.write(patches["VH"][idx][:,:,0],12)
-            final.close()
+    #         final.write(patches["B11"][idx][:,:,0],1) 
+    #         final.write(patches["B12"][idx][:,:,0],2) 
+    #         final.write(patches["B2"][idx][:,:,0],3) 
+    #         final.write(patches["B3"][idx][:,:,0],4)    
+    #         final.write(patches["B4"][idx][:,:,0],5)
+    #         final.write(patches["B5"][idx][:,:,0],6)
+    #         final.write(patches["B6"][idx][:,:,0],7)
+    #         final.write(patches["B7"][idx][:,:,0],8)
+    #         final.write(patches["B8"][idx][:,:,0],9) 
+    #         final.write(patches["B8A"][idx][:,:,0],10)
+    #         final.write(patches["VH"][idx][:,:,0],11)
+    #         final.write(patches["VV"][idx][:,:,0],12)
+    #         final.close()
 
     return img_out
-
-
 
 def imageAugmentation(images_path, masks_path):
 
@@ -272,7 +245,7 @@ def imageAugmentation(images_path, masks_path):
             
             new_img = rasterio.open(new_image_path,'w', driver='Gtiff',
                         width=transformed_image.shape[0], height=transformed_image.shape[1],
-                        count=12,
+                        count=original_image.shape[-1],
                         dtype=rasterio.float32)
             
             for band in range(transformed_image.shape[-1]-1):
@@ -281,7 +254,7 @@ def imageAugmentation(images_path, masks_path):
             
             tiff.imwrite(new_mask_path, transformed_mask)
             
-            if i in [5, 50]: 
+            if i == 25: 
                 rows, cols = 2, 2
                 plt.figure(figsize=(12,12))
         
@@ -310,7 +283,6 @@ def jaccard_distance_loss(y_true, y_pred, smooth=100):
     sum_ = K.sum(K.abs(y_true) + K.abs(y_pred), axis=-1)
     jac = (intersection + smooth) / (sum_ - intersection + smooth)
     return (1 - jac) * smooth
-
 
 def ScenceFinderAOI(shape_path, satellite, processing_level, product_type, start_date, end_date, cloud_cover, output_format='json', maxRecords = 15):
 
@@ -356,7 +328,7 @@ def cutString(string):
     string = '_'.join(string.split("_")[-2:])
     return string
 
-def filterScenes(sceneList):
+def filterScenes(sceneList, filterDate=True, filterID=True):
     sceneList = random.sample(sceneList, len(sceneList))
     final_list = []
 
@@ -368,8 +340,12 @@ def filterScenes(sceneList):
         else:
             count = 0
             for i in final_list:
-                if (date in i[0]) or (id in i[0]):
-                    count += 1
+                if filterDate:
+                    if date in i[0]:
+                        count += 1
+                elif filterID:
+                    if id in i[0]:
+                        count += 1
             if count == 0:
                 final_list.append(item)
                 
@@ -407,3 +383,21 @@ def predictPatches(model, predict_datagen, raster_path, output_folder):
     
     return
 
+# if idx not in [10,11,12]:
+#     r_array = r_array / 10000
+#     print("Change max and min value from: ", (r_array.max(), r_array.min()))
+#     r_array[np.where((stats.zscore(r_array) > 3))] = r_array.mean()
+#     r_array[np.where((stats.zscore(r_array) < -3))] = r_array.mean()
+#     print("To: ", (r_array.max(), r_array.min()))
+
+# final.write(patches["B2"][idx][:,:,0],1) 
+# final.write(patches["B3"][idx][:,:,0],2) 
+# final.write(patches["B4"][idx][:,:,0],3) 
+# final.write(patches["B5"][idx][:,:,0],4)    
+# final.write(patches["B6"][idx][:,:,0],5)
+# final.write(patches["B7"][idx][:,:,0],6)
+# final.write(patches["B8"][idx][:,:,0],7)
+# final.write(patches["B8A"][idx][:,:,0],8)
+# final.write(patches["B11"][idx][:,:,0],9) 
+# final.write(patches["B12"][idx][:,:,0],10)
+#final.close()
