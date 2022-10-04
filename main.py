@@ -3,7 +3,7 @@ from glob import glob
 import yaml
 from tools import *
 from sklearn.model_selection import train_test_split
-from unet import binary_unet
+from unet import binary_unet, binary_unet2
 import rasterio
 import random
 from matplotlib import pyplot as plt
@@ -157,15 +157,13 @@ if train_data:
         plt.show()                                                                                                                                                                                                                                                                                                                                                                                  
 
     #Load model
-    model = binary_unet(patch_xy[0], patch_xy[1], b_count)
+    model = binary_unet2(patch_xy[0], patch_xy[1], b_count)
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
-    model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=[dice_coef])
-
-    model.fit(train_datagen, verbose=1, epochs=50, shuffle=True)
+    model.compile(optimizer=optimizer, loss='binary_crossentropy', epochs=25, metrics=[dice_coef])
 
     # Save model for prediction
     # "Sentinel2_optimizer_loss_epochs"
-    model.save('Sentinel2_A_BC_50')
+    model.save('Sentinel2_A_BC_25')
 
     #model = tf.keras.models.load_model('pv_detection_Adam_cutoff', compile=False, custom_objects={'dice_coef': dice_coef})
 

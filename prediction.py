@@ -9,22 +9,29 @@ import yaml
 from scipy import stats
 
 # Read data from config file
-if os.path.exists("config.yaml"):
-    with open('config.yaml') as f:
+if os.path.exists("config_prediction.yaml"):
+    with open('config_prediction.yaml') as f:
         
         data = yaml.load(f, Loader=yaml.FullLoader)
 
-        sentinel1_folder = data['data_source']['Sentinel1']
-        sentinel2_folder = data['data_source']['Sentinel2']
-        model_path = data['model']['Unet_Sen1_Sen2']
+        if data['model']['Unet_Sen1_Sen2']:
+
+            sentinel1_folder = data['data_source']['Sentinel1']
+            sentinel2_folder = data['data_source']['Sentinel2']
+            sentinel_paths = glob("{}/*.tif".format(sentinel2_folder)) + glob("{}/*.tif".format(sentinel1_folder))
+            sentinel_paths.sort() 
+            model_path = data['model']['Unet_Sen1_Sen2']
+
+        elif data['model']['Unet_Sen2']:
+
+            sentinel2_folder = data['data_source']['Sentinel2']
+            sentinel_paths = glob("{}/*.tif".format(sentinel2_folder))
+            sentinel_paths.sort() 
+            model_path = data['model']['Unet_Sen2']
+
         output_folder = data["output_folder"]
 
 patching = False
-
-sentinel1_paths = glob("{}/*.tif".format(sentinel1_folder))
-sentinel2_paths = glob("{}/*.tif".format(sentinel2_folder))
-sentinel_paths = sentinel1_paths + sentinel2_paths
-sentinel_paths.sort() 
 
 if patching: 
 
@@ -69,24 +76,3 @@ predict_datagen = CustomImageGeneratorPrediction(patches_path, patch_xy, b_count
 model = tf.keras.models.load_model(model_path, compile=False, custom_objects={'dice_coef': dice_coef})
 
 predictPatches(model, predict_datagen, sentinel_paths[4], output_folder)
-
-# prediction = model.predict(img_dataset_stack, verbose=1) # output shape = (7725, 128, 128, 1)
-# del img_dataset_stack
-# prediction = (prediction > 0.5).astype(np.uint8) 
-
-# prediciton_reshape = np.reshape(prediction, (85,85,1,128,128,1)) 
-
-# recon_predict = unpatchify(prediciton_reshape, (128*85,128*85,1))
-
-# transform = raster.transform
-# crs = raster.crs
-
-# final = rasterio.open(r'D:\Universität\Master_GeoInfo\Masterarbeit\data\prediction\test.tiff', mode='w', driver='Gtiff',
-#                 width=recon_predict.shape[0], height=recon_predict.shape[1],
-#                 count=1,
-#                 crs=crs,
-#                 transform=transform,
-#                 dtype=rasterio.float32)
-
-# final.write(recon_predict[:,:,0],1) 
-# final.close()
