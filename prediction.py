@@ -33,6 +33,9 @@ if os.path.exists("config_prediction.yaml"):
 
 patching = False
 
+model = tf.keras.models.load_model(model_path, compile=False, custom_objects={'dice_coef': dice_coef})
+patch_size = model.input_shape[1]
+
 if patching: 
 
     bands_patches = {}
@@ -52,6 +55,7 @@ if patching:
         
         r_array = np.moveaxis(r_array, 0, -1)
         r_array = np.nan_to_num(r_array)
+        
 
         if band_name not in ['VV', 'VH']:
             r_array = r_array / 10000
@@ -60,7 +64,7 @@ if patching:
             # r_array[np.where((stats.zscore(r_array) < -3))] = r_array.mean()
             # print("To: ", (r_array.max(), r_array.min()))
         
-        bands_patches[band_name] = patchifyRasterAsArray(r_array, 128)
+        bands_patches[band_name] = patchifyRasterAsArray(r_array, patch_size)
 
     patches_path = savePatchesPredict(bands_patches, output_folder)
 
@@ -72,7 +76,5 @@ patch_xy = (patch_array.shape[0], patch_array.shape[1])
 b_count = patch_array.shape[-1]
 
 predict_datagen = CustomImageGeneratorPrediction(patches_path, patch_xy, b_count)
-
-model = tf.keras.models.load_model(model_path, compile=False, custom_objects={'dice_coef': dice_coef})
 
 predictPatches(model, predict_datagen, sentinel_paths[4], output_folder)

@@ -178,10 +178,27 @@ def savePatchesPredict(patches, output_folder):
     #         final.write(patches["B8"][idx][:,:,0],9) 
     #         final.write(patches["B8A"][idx][:,:,0],10)
     #         final.write(patches["VH"][idx][:,:,0],11)
-    #         final.write(patches["VV"][idx][:,:,0],12)
+    #         final.write(patches["VV"][idx][:,:,0],12)ss
     #         final.close()
 
     return img_out
+
+def calculateIndizes(patches):
+
+    def crossRatio(vv, vh):
+        return vv/vh
+    def ndvi(nir, red):
+        return (nir - red ) / ( nir + red )
+    def ndwi(nir, red):
+        return (nir - red ) / ( nir + red )
+
+    indizes = {"CrossRatio": crossRatio, "NDVI": ndvi, "NDWI": ndwi}
+
+    for idx in enumerate(list(indizes)):
+        for patch in 
+
+
+
 
 def imageAugmentation(images_path, masks_path):
 
@@ -204,13 +221,13 @@ def imageAugmentation(images_path, masks_path):
 
     def v_transl(image, seed):
         random.seed(seed)
-        n_pixels = random.randint(-128,128)
+        n_pixels = random.randint(-image.shape[0],image.shape[1])
         vtranslated_img = np.roll(image, n_pixels, axis=0)
         return vtranslated_img
 
     def h_transl(image, seed):
         random.seed(seed)
-        n_pixels = random.randint(-128,128)
+        n_pixels = random.randint(-image.shape[0],image.shape[0])
         htranslated_img = np.roll(image, n_pixels, axis=1)
         return htranslated_img
 
@@ -378,7 +395,7 @@ def filterSen2(sceneList, filterDate=True, filterID=True):
 
 def predictPatches(model, predict_datagen, raster_path, output_folder):
 
-    prediction = model.predict(predict_datagen, verbose=1) # output shape = (7225,128,128,1)
+    prediction = model.predict(predict_datagen, verbose=1) 
     prediction = (prediction > 0.5).astype(np.uint8) 
     
     raster = rasterio.open(raster_path)

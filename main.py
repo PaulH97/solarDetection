@@ -10,6 +10,9 @@ from matplotlib import pyplot as plt
 from datagen import CustomImageGenerator
 from scipy import stats
 import tensorflow as tf
+import importlib
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # Read data from config file
 if os.path.exists("config_training.yaml"):
@@ -30,6 +33,10 @@ if os.path.exists("config_training.yaml"):
         cloud_cover = data['satellite']['search_criteria']['cloud_cover']
         
         model_sen12 = data['model']['Sentinel1+2']
+        patch_size = data['model']['patch_size']
+        optimizer = data['model']['optimizer']
+        loss_function = data['model']['loss_function']
+        epochs = data['model']['epochs']
 
         output_folder = data["output_folder"]
 
@@ -154,20 +161,31 @@ if train_data:
         plt.imshow(X[i][:,:,:3])
         plt.subplot(122)
         plt.imshow(y[i])
-        plt.show()                                                                                                                                                                                                                                                                                                                                                                                  
+        plt.show() 
 
+    # TODO test model with diffrent parameters
+    # 256x256 Adam 0.001 jac_dist dice_coeff
+    # 256x256 SGD 0.001 jac_dist dice_coeff
+    # 128x128 Adam 0.001 jac_dist dice_coeff
+    # 128x128 SGD 0.001 jac_dist dice_coeff            
+    # 
+                                                                                                                                                                                                                                                                                                                                                            
     #Load model
-    model = binary_unet2(patch_xy[0], patch_xy[1], b_count)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
-    model.compile(optimizer=optimizer, loss='binary_crossentropy', epochs=25, metrics=[dice_coef])
+    model = binary_unet2(patch_xy[0], patch_xy[1], b_count)  
+    # optimizer = getattr(importlib.import_module("tensorflow.keras.optimizers"), optimizer)
+    # optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # or SGD
+    model.compile(optimizer=optimizer, loss=loss_function, metrics=[dice_coef])
+    # Model fit 
+    model.fit(train_datagen, verbose=1, epochs=epochs)
 
     # Save model for prediction
     # "Sentinel2_optimizer_loss_epochs"
-    model.save('Sentinel2_A_BC_25')
+    model_name = optimizer + "_" + loss_function + "_" + str(epochs) 
+    model.save(model_name)
 
-    #model = tf.keras.models.load_model('pv_detection_Adam_cutoff', compile=False, custom_objects={'dice_coef': dice_coef})
+    #model = tf.keras.models.load_model('pv_detection_Adam_cutoff', compile=False, custom_objects={'dice_coef': jaccard_distance_loss})
 
-    results = model.predict(test_datagen) # (288,128,128,1)
+    results = model.predict(test_datagen) # f.eg.(288,128,128,1)
     results = (results > 0.5).astype(np.uint8) 
 
     for i in range((test_datagen[0][1].shape[0])):
