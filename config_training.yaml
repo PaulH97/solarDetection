@@ -6,6 +6,11 @@ shapefiles:
 
 model:
   Sentinel1+2: False
+  patch_size: 128
+  optimizer: Adam
+  loss_function: binary_crossentropy
+  epochs: 25
+
 
 satellite:
   Sentinel1:
