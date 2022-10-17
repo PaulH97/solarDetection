@@ -3,6 +3,7 @@ from glob import glob
 import yaml
 from tools import *
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MaxAbsScaler
 from unet import binary_unet, binary_unet2
 import rasterio
 import random
@@ -10,7 +11,6 @@ from matplotlib import pyplot as plt
 from datagen import CustomImageGenerator
 from scipy import stats
 import tensorflow as tf
-import importlib
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -40,7 +40,7 @@ if os.path.exists("config_training.yaml"):
 
         output_folder = data["output_folder"]
 
-preprocess_data = False
+preprocess_data = True
 train_data = True
 
 if preprocess_data:
@@ -75,7 +75,7 @@ if preprocess_data:
         if model_sen12:
             tile_name = '_'.join(tile[0].split("_")[-2:])
             sen_path = glob(f"{tile[1]}/*.tif") + glob(f"{tile[0]}/*.tif") 
-            sen_path.sort() # B11 B12 B2 B3 B4 B5 B6 B7 B8 B8A VH VV
+            sen_path.sort() # VH VV B11 B12 B2 B3 B4 B5 B6 B7 B8 B8A 
         else:
             tile_name = '_'.join(tile.split("_")[-2:])
             sen_path = glob(f"{tile}/*.tif") 
@@ -87,10 +87,11 @@ if preprocess_data:
         mask_path = rasterizeShapefile(sen_path[2], solar_path, output_folder, tile_name, col_name="SolarPark")
 
         # all paths in one list
-        sen_mask = sen_path + [mask_path] # [B11 B12 B2 B3 B4 B5 B6 B7 B8 B8A (VH VV) MASK]
+        sen_mask = sen_path + [mask_path] # [(VH VV) B11 B12 B2 B3 B4 B5 B6 B7 B8 B8A  MASK]
 
         bands_patches = {} # {"B11": [[patch1], [patch2] ..., "B11": [...], ..., "SolarParks": [...]}
-
+        scaler = MaxAbsScaler()
+        
         # Patchify all input data -> create smaller patches
         for idx, band in enumerate(sen_mask):
 
@@ -109,14 +110,35 @@ if preprocess_data:
             r_array = np.moveaxis(r_array, 0, -1)
             r_array = np.nan_to_num(r_array)
 
-            if idx not in [10,11,12]:
-                    r_array = r_array / 10000
-                    # print("Change max and min value from: ", (r_array.max(), r_array.min()))
-                    # r_array[np.where((stats.zscore(r_array) > 3))] = r_array.mean()
-                    # r_array[np.where((stats.zscore(r_array) < -3))] = r_array.mean()
-                    # print("To: ", (r_array.max(), r_array.min()))
+            if band_name not in ['VV', 'VH'] and idx != (len(sen_mask)-1):
 
-            bands_patches[band_name] = patchifyRasterAsArray(r_array, 128)
+                a,b = 0,1
+                c,d = np.percentile(r_array, 1), np.percentile(r_array, 99)
+
+                r_array = a+(r_array-c)*((b-a)/(d-c))
+                r_array[r_array > 1] = 1
+                r_array[r_array < 0] = 0
+                
+                # plt.hist(r_array.flatten(), bins = [0,200,400,1000,5000,10000])
+                # plt.show()
+                # plt.hist(r_array2.flatten(), bins = [0,0.2,0.4,0.6,0.8,1.0,2.0])
+                # plt.show()  
+
+            elif band_name in ['VV', 'VH'] and idx != (len(sen_mask)-1):
+    
+                a,b = -1,0
+                c,d = np.percentile(r_array, 1), np.percentile(r_array, 99)
+
+                r_array = a+(r_array-c)*((b-a)/(d-c))
+                r_array[r_array < -1] = -1
+                r_array[r_array > 0] = 0
+
+                # plt.hist(r_array.flatten(), bins = [-40, -30, -20, -10, 0, 10])
+                # plt.show()
+                # plt.hist(r_array2.flatten(), bins = [-1, -0.8, -0.6, -0.4, -0.2, 0, 0.2])
+                # plt.show()           
+
+            bands_patches[band_name] = patchifyRasterAsArray(r_array, patch_size)
 
         # Save patches in folder as raster file
         images_path, masks_path = savePatchesTrain(bands_patches, output_folder)

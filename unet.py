@@ -1,7 +1,8 @@
-from tensorflow.keras.applications.vgg16 import VGG16
 import numpy as np
 from tensorflow.keras.models import Model
 import tensorflow as tf
+from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D, concatenate, Conv2DTranspose, BatchNormalization, Dropout, Lambda
+from keras import backend as K
 
 def transferL_unet_model(img_width, img_height, img_bands):
 
@@ -61,10 +62,6 @@ def transferL_unet_model(img_width, img_height, img_bands):
                     target_layer.trainable = True  
 
     return vgg_updated
-
-from keras.models import Model
-from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D, concatenate, Conv2DTranspose, BatchNormalization, Dropout, Lambda
-from keras import backend as K
 
 def multi_unet_model(IMG_HEIGHT=256, IMG_WIDTH=256, IMG_CHANNELS=12):
 #Build the model

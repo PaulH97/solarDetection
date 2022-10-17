@@ -5,7 +5,7 @@ data_source:
    Sentinel2: "/codede/Sentinel-2/MSI/L3-WASP/2021/05/01/S2_L3_WASP_202105_32UNA/"
 
 model:
-  Unet_Sen1_Sen2: ""
-  Unet_Sen2: "/home/hoehn/code/solarDetection/Sentinel2_A_BC_25/"
+  Unet_Sen1_Sen2: "/home/hoehn/code/solarDetection/Adam_binary_crossentropy_30/"
+  Unet_Sen2: ""
 
 output_folder: "/home/hoehn/data/prediction/"

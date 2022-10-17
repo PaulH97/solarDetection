@@ -5,7 +5,6 @@ import numpy as np
 import geopandas as gdp
 from osgeo import gdal
 import os
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from rasterio import Affine
 import tifffile as tiff
 import random
@@ -19,7 +18,6 @@ def load_img_as_array(path):
     # read img as array 
     img_array = rasterio.open(path).read()
     img_array = np.moveaxis(img_array, 0, -1)
-    #img_array = scaler.fit_transform(img_array.reshape(-1, img_array.shape[-1])).reshape(img_array.shape)
     #img_array = np.nan_to_num(img_array)
 
     return img_array
@@ -59,8 +57,7 @@ def patchifyRasterAsArray(array, patch_size):
     patches = patchify(array, (patch_size, patch_size, 1), step=patch_size)    
     patchX = patches.shape[0]
     patchY = patches.shape[1]
-    scaler = MinMaxScaler()
-    
+    # scaler = MinMaxScaler()
     result = []
 
     for i in range(patchX):
@@ -68,7 +65,7 @@ def patchifyRasterAsArray(array, patch_size):
         
             single_patch_img = patches[i,j,:,:]
             # need to normalize values between 0-1
-            single_patch_img = scaler.fit_transform(single_patch_img.reshape(-1, single_patch_img.shape[-1])).reshape(single_patch_img.shape)
+            # single_patch_img = scaler.fit_transform(single_patch_img.reshape(-1, single_patch_img.shape[-1])).reshape(single_patch_img.shape)
             single_patch_img = single_patch_img[0] #Drop the extra unecessary dimension that patchify adds.                               
             result.append(single_patch_img)
     
@@ -183,19 +180,19 @@ def savePatchesPredict(patches, output_folder):
 
     return img_out
 
-def calculateIndizes(patches):
+# def calculateIndizes(patches):
 
-    def crossRatio(vv, vh):
-        return vv/vh
-    def ndvi(nir, red):
-        return (nir - red ) / ( nir + red )
-    def ndwi(nir, red):
-        return (nir - red ) / ( nir + red )
+#     def crossRatio(vv, vh):
+#         return vv/vh
+#     def ndvi(nir, red):
+#         return (nir - red ) / ( nir + red )
+#     def ndwi(nir, red):
+#         return (nir - red ) / ( nir + red )
 
-    indizes = {"CrossRatio": crossRatio, "NDVI": ndvi, "NDWI": ndwi}
+#     indizes = {"CrossRatio": crossRatio, "NDVI": ndvi, "NDWI": ndwi}
 
-    for idx in enumerate(list(indizes)):
-        for patch in 
+#     for idx in enumerate(list(indizes)):
+#         for patch in 
 
 
 

@@ -5,11 +5,11 @@ shapefiles:
   Solar: "/home/hoehn/data/input/SolarParks.shp"
 
 model:
-  Sentinel1+2: False
+  Sentinel1+2: True
   patch_size: 128
   optimizer: Adam
   loss_function: binary_crossentropy
-  epochs: 25
+  epochs: 30
 
 
 satellite:

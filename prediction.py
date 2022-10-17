@@ -31,7 +31,7 @@ if os.path.exists("config_prediction.yaml"):
 
         output_folder = data["output_folder"]
 
-patching = False
+patching = True
 
 model = tf.keras.models.load_model(model_path, compile=False, custom_objects={'dice_coef': dice_coef})
 patch_size = model.input_shape[1]
@@ -56,14 +56,29 @@ if patching:
         r_array = np.moveaxis(r_array, 0, -1)
         r_array = np.nan_to_num(r_array)
         
+        if band_name not in ['VV', 'VH'] and idx != (len(sentinel_paths)-1):
 
-        if band_name not in ['VV', 'VH']:
-            r_array = r_array / 10000
-            # print("Change max and min value from: ", (r_array.max(), r_array.min()))
-            # r_array[np.where((stats.zscore(r_array) > 3))] = r_array.mean()
-            # r_array[np.where((stats.zscore(r_array) < -3))] = r_array.mean()
-            # print("To: ", (r_array.max(), r_array.min()))
-        
+            a,b = 0,1
+            c,d = np.percentile(r_array, 1), np.percentile(r_array, 99)
+
+            r_array = a+(r_array-c)*((b-a)/(d-c))
+            r_array[r_array > 1] = 1
+            r_array[r_array < 0] = 0
+            
+            # plt.hist(r_array.flatten(), bins = [0,200,400,1000,5000,10000])
+            # plt.show()
+            # plt.hist(r_array2.flatten(), bins = [0,0.2,0.4,0.6,0.8,1.0,2.0])
+            # plt.show()  
+
+        elif band_name in ['VV', 'VH'] and idx != (len(sentinel_paths)-1):
+
+            a,b = -1,0
+            c,d = np.percentile(r_array, 1), np.percentile(r_array, 99)
+
+            r_array = a+(r_array-c)*((b-a)/(d-c))
+            r_array[r_array < -1] = -1
+            r_array[r_array > 0] = 0    
+
         bands_patches[band_name] = patchifyRasterAsArray(r_array, patch_size)
 
     patches_path = savePatchesPredict(bands_patches, output_folder)
