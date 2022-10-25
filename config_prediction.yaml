@@ -1,11 +1,11 @@
 version: 1.1
 
 data_source:
-   Sentinel1: "/codede/Sentinel-1/SAR/CARD-BS-MC/2021/05/01/S1_CARD-BS-MC_202105_32UNA/"
-   Sentinel2: "/codede/Sentinel-2/MSI/L3-WASP/2021/05/01/S2_L3_WASP_202105_32UNA/"
+   Sentinel1: "/codede/Sentinel-1/SAR/CARD-BS-MC/2021/05/01/S1_CARD-BS-MC_202105_32UPC/"
+   Sentinel2: "/codede/Sentinel-2/MSI/L3-WASP/2021/05/01/S2_L3_WASP_202105_32UPC/"
 
 model:
-  Unet_Sen1_Sen2: "/home/hoehn/code/solarDetection/Adam_binary_crossentropy_30/"
+  Unet_Sen1_Sen2: "/home/hoehn/code/solarDetection/Adam_binary_crossentropy_20"
   Unet_Sen2: ""
 
 output_folder: "/home/hoehn/data/prediction/"

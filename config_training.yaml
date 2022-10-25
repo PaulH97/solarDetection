@@ -9,7 +9,7 @@ model:
   patch_size: 128
   optimizer: Adam
   loss_function: binary_crossentropy
-  epochs: 30
+  epochs: 10
 
 
 satellite:

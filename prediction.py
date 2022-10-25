@@ -6,7 +6,7 @@ from glob import glob
 from datagen import CustomImageGeneratorPrediction
 from tools import *
 import yaml
-from scipy import stats
+from sklearn.preprocessing import MinMaxScaler
 
 # Read data from config file
 if os.path.exists("config_prediction.yaml"):
@@ -56,30 +56,13 @@ if patching:
         r_array = np.moveaxis(r_array, 0, -1)
         r_array = np.nan_to_num(r_array)
         
-        if band_name not in ['VV', 'VH'] and idx != (len(sentinel_paths)-1):
+        a,b = 0,1
+        c,d = np.percentile(r_array, [0.1, 99.9])
+        r_array_norm = (b-a)*((r_array-c)/(d-c))+a
+        r_array_norm[r_array_norm > 1] = 1
+        r_array_norm[r_array_norm < 0] = 0 
 
-            a,b = 0,1
-            c,d = np.percentile(r_array, 1), np.percentile(r_array, 99)
-
-            r_array = a+(r_array-c)*((b-a)/(d-c))
-            r_array[r_array > 1] = 1
-            r_array[r_array < 0] = 0
-            
-            # plt.hist(r_array.flatten(), bins = [0,200,400,1000,5000,10000])
-            # plt.show()
-            # plt.hist(r_array2.flatten(), bins = [0,0.2,0.4,0.6,0.8,1.0,2.0])
-            # plt.show()  
-
-        elif band_name in ['VV', 'VH'] and idx != (len(sentinel_paths)-1):
-
-            a,b = -1,0
-            c,d = np.percentile(r_array, 1), np.percentile(r_array, 99)
-
-            r_array = a+(r_array-c)*((b-a)/(d-c))
-            r_array[r_array < -1] = -1
-            r_array[r_array > 0] = 0    
-
-        bands_patches[band_name] = patchifyRasterAsArray(r_array, patch_size)
+        bands_patches[band_name] = patchifyRasterAsArray(r_array_norm, patch_size)
 
     patches_path = savePatchesPredict(bands_patches, output_folder)
 

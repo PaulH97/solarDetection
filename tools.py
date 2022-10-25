@@ -12,14 +12,14 @@ from matplotlib import pyplot as plt
 import requests
 import geopandas as gpd
 from keras import backend as K
-import shutil
+from sklearn.preprocessing import MinMaxScaler, RobustScaler, MaxAbsScaler
+from collections import OrderedDict
 
 def load_img_as_array(path):
     # read img as array 
     img_array = rasterio.open(path).read()
     img_array = np.moveaxis(img_array, 0, -1)
     #img_array = np.nan_to_num(img_array)
-
     return img_array
 
 def resampleRaster(raster_path, resolution):
@@ -57,15 +57,13 @@ def patchifyRasterAsArray(array, patch_size):
     patches = patchify(array, (patch_size, patch_size, 1), step=patch_size)    
     patchX = patches.shape[0]
     patchY = patches.shape[1]
-    # scaler = MinMaxScaler()
     result = []
+    #scaler = MinMaxScaler()
 
     for i in range(patchX):
         for j in range(patchY):
-        
             single_patch_img = patches[i,j,:,:]
-            # need to normalize values between 0-1
-            # single_patch_img = scaler.fit_transform(single_patch_img.reshape(-1, single_patch_img.shape[-1])).reshape(single_patch_img.shape)
+            #single_patch_img = scaler.fit_transform(single_patch_img.reshape(-1, single_patch_img.shape[-1])).reshape(single_patch_img.shape)
             single_patch_img = single_patch_img[0] #Drop the extra unecessary dimension that patchify adds.                               
             result.append(single_patch_img)
     
@@ -76,22 +74,11 @@ def savePatchesTrain(patches, output_folder):
     mask_out = os.path.join(output_folder, "Crops", "mask") 
     img_out = os.path.join(output_folder, "Crops", "img") 
     
-    if not os.path.exists(mask_out):
-        os.makedirs(mask_out)
-    else:
-        for f in os.listdir(mask_out):
-            os.remove(os.path.join(mask_out, f))
-    
-    if not os.path.exists(img_out):
-        os.makedirs(img_out)
-    else:
-        for f in os.listdir(img_out):
-            os.remove(os.path.join(img_out, f))
-                
     mask_name = list(patches.keys())[-1]
     band_names = list(patches.keys())[:-1] 
     band_names.sort()
     idx_noPV = []
+    countPV = 0
 
     for idx, mask in enumerate(patches[mask_name]):
 
@@ -107,11 +94,11 @@ def savePatchesTrain(patches, output_folder):
             for band_nr, band_name in enumerate(band_names):
                 final.write(patches[band_name][idx][:,:,0],band_nr+1)
             final.close()
-        
+            countPV += 1
         else:
             idx_noPV.append(idx)
     
-    random_idx = random.sample(idx_noPV,k=len(os.listdir(mask_out)))
+    random_idx = random.sample(idx_noPV, countPV)
 
     for idx, mask in enumerate(patches[mask_name]):
 
@@ -175,31 +162,45 @@ def savePatchesPredict(patches, output_folder):
     #         final.write(patches["B8"][idx][:,:,0],9) 
     #         final.write(patches["B8A"][idx][:,:,0],10)
     #         final.write(patches["VH"][idx][:,:,0],11)
-    #         final.write(patches["VV"][idx][:,:,0],12)ss
+    #         final.write(patches["VV"][idx][:,:,0],12)
     #         final.close()
 
     return img_out
 
-# def calculateIndizes(patches):
+def calculateIndizes(bands_patches):
 
-#     def crossRatio(vv, vh):
-#         return vv/vh
-#     def ndvi(nir, red):
-#         return (nir - red ) / ( nir + red )
-#     def ndwi(nir, red):
-#         return (nir - red ) / ( nir + red )
+    last_key = list(bands_patches.keys())[-1]
 
-#     indizes = {"CrossRatio": crossRatio, "NDVI": ndvi, "NDWI": ndwi}
+    cr_list, ndvi_list, ndwi_list = [], [], []
 
-#     for idx in enumerate(list(indizes)):
-#         for patch in 
+    for idx in range(len(bands_patches[list(bands_patches.keys())[0]])):
 
+        vv = bands_patches['VV'][idx]
+        vh = bands_patches['VH'][idx]
+        nir = bands_patches['B8'][idx]
+        red = bands_patches['B4'][idx]
+        swir1 = bands_patches['B11'][idx]
 
+        cr = np.nan_to_num(vv/vh)
+        cr_list.append(cr)
+        ndvi = np.nan_to_num((nir-red)/(nir+red))
+        ndvi_list.append(ndvi) 
+        ndwi = np.nan_to_num((nir-swir1)/(nir+swir1))
+        ndwi_list.append(ndwi)
 
+    bands_patches["CR"] = cr_list
+    bands_patches["NDVI"] = ndvi_list
+    bands_patches["NDWI"] = ndwi_list
+
+    # bands_patches = OrderedDict(bands_patches)
+    # bands_patches.move_to_end(last_key)
+
+    # import pdb
+    # pdb.set_trace()
+    
+    return bands_patches
 
 def imageAugmentation(images_path, masks_path):
-
-    seed_for_random = 42
 
     def rotation90(image, seed):
         random.seed(seed)
@@ -262,7 +263,7 @@ def imageAugmentation(images_path, masks_path):
             new_img = rasterio.open(new_image_path,'w', driver='Gtiff',
                         width=transformed_image.shape[0], height=transformed_image.shape[1],
                         count=original_image.shape[-1],
-                        dtype=rasterio.float32)
+                        dtype=rasterio.float64)
             
             for band in range(transformed_image.shape[-1]-1):
                 new_img.write(transformed_image[:,:,band], band+1)
@@ -270,19 +271,19 @@ def imageAugmentation(images_path, masks_path):
             
             tiff.imwrite(new_mask_path, transformed_mask)
             
-            if i == 25: 
-                rows, cols = 2, 2
-                plt.figure(figsize=(12,12))
+            # if i == 25: 
+            #     rows, cols = 2, 2
+            #     plt.figure(figsize=(12,12))
         
-                plt.subplot(rows, cols, 1)
-                plt.imshow(original_image[:,:,:3])
-                plt.subplot(rows, cols, 2)
-                plt.imshow(transformed_image[:,:,:3])
-                plt.subplot(rows, cols, 3)
-                plt.imshow(original_mask)
-                plt.subplot(rows, cols, 4)
-                plt.imshow(transformed_mask)
-                plt.show()
+            #     plt.subplot(rows, cols, 1)
+            #     plt.imshow(original_image[:,:,:3])
+            #     plt.subplot(rows, cols, 2)
+            #     plt.imshow(transformed_image[:,:,:3])
+            #     plt.subplot(rows, cols, 3)
+            #     plt.imshow(original_mask)
+            #     plt.subplot(rows, cols, 4)
+            #     plt.imshow(transformed_mask)
+            #     plt.show()
    
     return
 
@@ -292,13 +293,18 @@ def dice_coef(y_true, y_pred):
     intersection = K.sum(y_true_f * y_pred_f)
     coef = (2. * intersection + K.epsilon()) / (K.sum(y_true_f) + K.sum(y_pred_f) + K.epsilon())
     return coef
-    
-def jaccard_distance_loss(y_true, y_pred, smooth=100):
 
-    intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
-    sum_ = K.sum(K.abs(y_true) + K.abs(y_pred), axis=-1)
-    jac = (intersection + smooth) / (sum_ - intersection + smooth)
-    return (1 - jac) * smooth
+def dice_coef_loss(y_true, y_pred):
+    return 1-dice_coef(y_true, y_pred)
+
+def jaccard_distance_coef(y_true, y_pred):
+    y_true_f = K.flatten(y_true)
+    y_pred_f = K.flatten(y_pred)
+    intersection = K.sum(K.abs(y_true_f * y_pred_f))
+    return (intersection + 1.0) / (K.sum(y_true_f) + K.sum(y_pred_f) - intersection + 1.0)
+
+def jaccard_distance_loss(y_true, y_pred, smooth=100):
+    return -jaccard_distance_coef(y_true, y_pred)
 
 def ScenceFinderAOI(shape_path, satellite, processing_level, product_type, start_date, end_date, cloud_cover, output_format='json', maxRecords = 15):
 
